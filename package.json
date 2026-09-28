@@ -1,0 +1,13 @@
+{
+  "name": "jiwon-ilji",
+  "private": true,
+  "type": "module",
+  "description": "지원일지: 로컬에서 쓰는 취업 준비 기록 앱",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
