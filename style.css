@@ -1682,6 +1682,7 @@ select option {
 
 .calendar-wrap {
   overflow-x: auto;
+  container: calendar / inline-size;
 }
 
 /* 달마다 한 덩어리. 사이에 달 제목을 둔다. */
@@ -4201,7 +4202,9 @@ ul.goal-group,
   outline: none;
 }
 
-@media (max-width: 1400px) {
+/* 날짜 칸이 좁을 때(칸 하나 약 125px 미만)만 일정 칩을 두 줄(이름 / 시각)로. 창 폭이 아니라 달력 영역의 실제 폭을 본다. */
+
+@container calendar (max-width: 880px) {
   .calendar-grid { --calendar-event-height: 34px; }
   .calendar-event {
     display: grid;

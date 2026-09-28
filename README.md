@@ -18,11 +18,11 @@
 | | 실행 방법 |
 |---|---|
 | **윈도우** | 받은 폴더의 `windows-app.bat`을 **한 번** 실행하면 바탕화면과 시작 메뉴에 **지원일지 아이콘**이 생깁니다. 아이콘을 누르면 지원일지가 독립된 앱 창으로 열리고, **창을 닫으면 앱도 꺼집니다.** 시작 메뉴에서 우클릭 → 작업 표시줄에 고정해 두면 편합니다. (아이콘 없이 쓰려면 `start.bat` — 검은 창을 닫을 때까지 켜져 있습니다) |
-| **맥** | `mac-app.command`를 한 번 실행하면 아이콘이 있는 `지원일지.app`이 만들어집니다. Dock에 끌어다 두고 누르면 열리고, Dock에서 종료하면 꺼집니다. (아이콘 없이 쓰려면 `start.command`) |
+| **맥** | 받은 폴더에 들어 있는 **`지원일지.app`**을 Dock에 끌어다 두고 누르면 됩니다. 브라우저 없이 **자기 창으로** 열리고, 창을 닫거나 ⌘Q로 끝내면 저장을 마치고 꺼집니다. (앱은 폴더 안에 둔 채로 쓰세요. 다른 곳으로 옮기면 처음에 지원일지 폴더를 한 번 골라 달라고 합니다. 아이콘 없이 쓰려면 `start.command`) |
 
 - 앱 주소는 `http://127.0.0.1:4173` 입니다(앱이 켜져 있을 때만 열립니다).
-- 앱 폴더를 다른 곳으로 옮겼다면 `windows-app.bat`(맥은 `mac-app.command`)을 다시 실행해 아이콘을 새로 만들어 주세요.
-- 처음 실행할 때 윈도우가 "PC 보호" 창을 띄우면 **추가 정보 → 실행**, 맥이 막으면 파일을 **우클릭 → 열기**를 한 번 해 주세요.
+- 윈도우에서 앱 폴더를 다른 곳으로 옮겼다면 `windows-app.bat`을 다시 실행해 아이콘을 새로 만들어 주세요.
+- 처음 실행할 때 윈도우가 "PC 보호" 창을 띄우면 **추가 정보 → 실행**을 눌러 주세요. 맥에서 "열 수 없다"고 막으면 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**를 한 번 눌러 주세요(GitHub Desktop으로 받으면 보통 뜨지 않습니다).
 
 ## 업데이트 받기
 새 기능이 올라오면 **GitHub Desktop의 Fetch origin → Pull origin**(또는 `git pull`)을 누른 뒤 앱을 다시 켜면 됩니다.
@@ -82,7 +82,8 @@ js/goals.js         지원 현황 위의 목표 · 해 온 것 보드, 목표 �
 js/postings.js      지원 현황(표·보드·단계 요약), posting-detail.js 상세, interview.js 면접 후기, peek.js 사이드 피크, date-field.js 날짜 칸
 js/experiences.js   경험 정리, calendar.js·ics.js·event-dialog.js 달력, posting-dialog.js 새 공고 창
 js/util.js, model.js, ui.js, dom.js   공통 도구, 상태 규칙, 알림·움직임, 자주 쓰는 화면 요소
-windows-app.bat · mac-app.command   아이콘 바로가기/앱 만들기(윈도우 · 맥). start.bat · start.command는 아이콘 없이 실행, ai-key.*는 OpenAI 키 저장
+지원일지.app        맥 네이티브 앱(WKWebView 창, 인텔·애플 실리콘 겸용). 소스는 mac/main.swift, 다시 만들 때는 mac/build.command
+windows-app.bat     윈도우 아이콘 바로가기 만들기. start.bat · start.command는 아이콘 없이 실행, ai-key.*는 OpenAI 키 저장
 assets/             아이콘(icon.svg 원본, icon.ico), 윈도우 실행기(launch-windows.vbs: 서버를 --exit-when-closed로 켜고 Edge 앱 창으로 연다), 바로가기 만들기(make-shortcut.ps1)
 fonts/              Pretendard 글꼴(SIL Open Font License, fonts/OFL.txt)
 test/               자동 테스트(서버를 실제로 띄워 보는 테스트 포함)

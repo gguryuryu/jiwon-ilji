@@ -7,3 +7,4 @@
 *.png binary
 *.vbs binary
 *.ps1 text eol=crlf
+지원일지.app/Contents/MacOS/* binary

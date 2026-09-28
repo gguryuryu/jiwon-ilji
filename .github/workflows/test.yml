@@ -55,3 +55,15 @@ jobs:
           try { Invoke-WebRequest http://127.0.0.1:4190/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }
           if ($stillUp) { throw '앱 창을 닫았는데 서버가 꺼지지 않았습니다' }
           Write-Host '창을 닫자 서버가 꺼졌습니다'
+      # 맥 네이티브 앱: 소스가 컴파일되는지, 저장소에 든 앱이 다른 맥에서도 서버를 켜고 끄는지 확인한다.
+      - name: 맥 앱 컴파일 · 실행 확인
+        if: runner.os == 'macOS'
+        env:
+          JIWON_TEST: '1'
+          PORT: '4191'
+        run: |
+          swiftc -O -swift-version 5 -o "$RUNNER_TEMP/jiwon-ilji" mac/main.swift -framework AppKit -framework WebKit
+          lipo -archs 지원일지.app/Contents/MacOS/jiwon-ilji | grep -q x86_64
+          lipo -archs 지원일지.app/Contents/MacOS/jiwon-ilji | grep -q arm64
+          codesign --verify --deep 지원일지.app
+          ./지원일지.app/Contents/MacOS/jiwon-ilji
