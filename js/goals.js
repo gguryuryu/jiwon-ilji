@@ -33,7 +33,10 @@ function doingItem(goal) {
   return `<li class="gb-item gb-goal" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${id}"><span class="gb-line"><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span>${pieHtml(percent)}</span>${sub}</li>`;
 }
 
-const todoItem = goal => `<li class="gb-item" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${escapeHtml(goal.id)}"><span class="gb-line"><span class="gb-mark todo" aria-hidden="true"></span><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span><span class="gb-meta">${escapeHtml(monthLabel(goal.target))}</span></span></li>`;
+// 아직 시작하지 않은 목표 표시: 점선 원. CSS 점선 테두리는 작은 원에서 점선이 고르지 않아(특히 사파리) SVG로 그린다.
+const todoRing = '<svg class="todo-ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" pathLength="24" /></svg>';
+
+const todoItem = goal => `<li class="gb-item" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${escapeHtml(goal.id)}"><span class="gb-line"><span class="gb-mark" aria-hidden="true">${todoRing}</span><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span><span class="gb-meta">${escapeHtml(monthLabel(goal.target))}</span></span></li>`;
 
 // 해 온 것: 끝낸 목표, 자격 · 어학 점수, 최종 합격을 날짜순으로 한데 모은다.
 // 자격증 목표를 완료해 자격이 생겼으면 목표 대신 자격 한 줄로만 보여 준다.
@@ -86,7 +89,7 @@ let goalListDialog = null;
 function renderGoalList() {
   const row = goal => {
     const { percent } = goalProgress(goal);
-    const mark = goal.status === 'doing' ? `<span class="list-mark">${pieHtml(percent)}</span>` : '<span class="list-mark todo"></span>';
+    const mark = goal.status === 'doing' ? `<span class="list-mark">${pieHtml(percent)}</span>` : `<span class="list-mark">${todoRing}</span>`;
     const when = goal.target ? `${monthLabel(goal.target)} 목표` : '';
     return `<li><button type="button" class="goal-row" data-goal="${escapeHtml(goal.id)}">${mark}<span class="goal-row-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span><span class="goal-row-when">${escapeHtml(when)}</span></button></li>`;
   };

@@ -3631,9 +3631,17 @@ main.view-enter > :not(.peek) {
   height: 14px;
 }
 
-.gb-mark.todo {
-  border: 1.5px dashed var(--text-3);
-  border-radius: 50%;
+.todo-ring {
+  width: 100%;
+  height: 100%;
+}
+
+/* 둘레를 24로 보고 2만큼 긋고 2만큼 비워, 점선 12개가 같은 간격으로 놓인다. */
+.todo-ring circle {
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 1.5px;
+  stroke-dasharray: 2 2;
 }
 
 .gb-mark.done .icon {
@@ -3950,12 +3958,9 @@ ul.goal-group,
   height: 26px;
 }
 
-.list-mark.todo::before {
-  content: "";
+.list-mark .todo-ring {
   width: 16px;
   height: 16px;
-  border: 1.5px dashed var(--text-3);
-  border-radius: 50%;
 }
 
 .list-mark.done .icon {
