@@ -26,14 +26,22 @@ jobs:
           JIWON_TEST: '1'
           PORT: '4190'
         run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File assets/make-shortcut.ps1
+          # 사용자 폴더 이름이 한글이어도 되도록, 한글 폴더에 복사해서 바로가기를 만들고 그 바로가기를 그대로 실행해 본다.
+          $korean = Join-Path $env:RUNNER_TEMP '한글 폴더\지원일지'
+          New-Item -ItemType Directory -Force -Path $korean | Out-Null
+          Copy-Item -Recurse -Force -Path * -Destination $korean
+          powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $korean 'assets\make-shortcut.ps1')
+          if ($LASTEXITCODE -ne 0) { throw '바로가기를 만들지 못했습니다' }
+          $shortcut = $null
           foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
             $link = Join-Path $folder '지원일지.lnk'
-            if (-not (Test-Path $link)) { throw "바로가기가 없습니다: $link" }
-            $target = (New-Object -ComObject WScript.Shell).CreateShortcut($link)
-            Write-Host "$link -> $($target.TargetPath) $($target.Arguments) [$($target.IconLocation)]"
+            if (-not (Test-Path -LiteralPath $link)) { throw "바로가기가 없습니다: $link" }
+            $shortcut = (New-Object -ComObject Shell.Application).NameSpace($folder).ParseName('지원일지.lnk').GetLink
+            Write-Host "$link -> $($shortcut.Path) $($shortcut.Arguments) [$($shortcut.WorkingDirectory)]"
           }
-          cscript //nologo assets/launch-windows.vbs
+          $vbs = $shortcut.Arguments.Trim('"')
+          if (-not (Test-Path -LiteralPath $vbs)) { throw "바로가기가 가리키는 실행기가 없습니다(한글 경로가 깨졌을 수 있음): $vbs" }
+          cscript //nologo $vbs
           if ($LASTEXITCODE -ne 0) { throw '실행기가 서버를 켜지 못했습니다' }
           $page = Invoke-WebRequest http://127.0.0.1:4190/js/main.js -UseBasicParsing
           if ($page.StatusCode -ne 200) { throw '화면 파일을 받지 못했습니다' }

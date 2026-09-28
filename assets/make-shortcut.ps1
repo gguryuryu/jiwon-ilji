@@ -1,17 +1,21 @@
 ﻿# 바탕화면과 시작 메뉴에 '지원일지' 바로가기를 만든다(아이콘 포함). windows-app.bat이 실행한다.
+# 옛 바로가기 저장 기능(WScript.Shell)은 한글 파일 이름을 저장하지 못하므로, 영문 이름으로 저장한 뒤 한글 이름으로 바꾼다.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
+$launcher = Join-Path $root 'assets\launch-windows.vbs'
 $shell = New-Object -ComObject WScript.Shell
 $made = @()
 foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-  $path = Join-Path $folder '지원일지.lnk'
-  $link = $shell.CreateShortcut($path)
+  $temporary = Join-Path $folder 'jiwon-ilji-shortcut.lnk'
+  $path = Join-Path $folder ('지원일지' + '.lnk')
+  $link = $shell.CreateShortcut($temporary)
   $link.TargetPath = Join-Path $env:SystemRoot 'System32\wscript.exe'
-  $link.Arguments = '"' + (Join-Path $root 'assets\launch-windows.vbs') + '"'
+  $link.Arguments = '"' + $launcher + '"'
   $link.WorkingDirectory = $root
   $link.IconLocation = (Join-Path $root 'assets\icon.ico') + ',0'
-  $link.Description = '지원일지'
+  $link.Description = 'Jiwon-ilji'
   $link.Save()
+  Move-Item -LiteralPath $temporary -Destination $path -Force
   $made += $path
 }
 Write-Host '바로가기를 만들었어요:'
