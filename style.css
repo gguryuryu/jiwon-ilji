@@ -10,21 +10,21 @@
 
 :root {
   color-scheme: dark;
-  --bg: #191919;
-  --sidebar: #202020;
-  --surface: #1e1e1e;
-  --surface-2: #252525;
-  --elevated: #2c2c2c;
-  --hover: rgba(255, 255, 255, .055);
+  --bg: #151516;
+  --sidebar: #1a1a1c;
+  --surface: #1d1d20;
+  --surface-2: #242427;
+  --elevated: #2b2b2f;
+  --hover: rgba(255, 255, 255, .05);
   --active: rgba(255, 255, 255, .085);
-  --border: rgba(255, 255, 255, .09);
-  --border-strong: rgba(255, 255, 255, .15);
-  --text: rgba(255, 255, 255, .88);
-  --text-2: rgba(255, 255, 255, .76);
-  --text-3: rgba(255, 255, 255, .60);
-  --accent: #2383e2;
-  --accent-hover: #3a91e8;
-  --accent-soft: rgba(35, 131, 226, .28);
+  --border: rgba(255, 255, 255, .07);
+  --border-strong: rgba(255, 255, 255, .13);
+  --text: rgba(255, 255, 255, .93);
+  --text-2: rgba(255, 255, 255, .66);
+  --text-3: rgba(255, 255, 255, .44);
+  --accent: #3b82f6;
+  --accent-hover: #5591f7;
+  --accent-soft: rgba(59, 130, 246, .26);
   --danger: #ff7b72;
   --tag-gray: #3b3b3b;
   --tag-brown: #5c3b2c;
@@ -47,7 +47,7 @@
   --c-red: #e06a5f;
   --c-teal: #45b1a8;
   --ease-out: cubic-bezier(.2, .8, .2, 1);
-  --radius: 6px;
+  --radius: 8px;
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -132,7 +132,7 @@ textarea:focus-visible {
   flex-direction: column;
   padding: 12px 8px;
   background: var(--sidebar);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid rgba(255, 255, 255, .05);
 }
 
 .brand {
@@ -196,9 +196,10 @@ textarea:focus-visible {
 }
 
 .primary-nav button.active {
-  background: var(--active);
+  background: rgba(255, 255, 255, .075);
   color: var(--text);
   font-weight: 500;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
 }
 
 .sidebar-foot {
@@ -263,6 +264,8 @@ main.calendar-page {
   border: 0;
   background: var(--accent);
   color: #fff;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 1px 2px rgba(0, 0, 0, .35);
 }
 
 .primary-button:hover {
@@ -346,10 +349,10 @@ main.calendar-page {
 
 .page-title {
   margin: 0;
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -.025em;
+  letter-spacing: -.035em;
 }
 
 .page-description {
@@ -426,6 +429,7 @@ main.calendar-page {
   border-radius: var(--radius);
   color: var(--text-3);
   transition: background-color .12s;
+  background: var(--hover);
 }
 
 .search-box:hover,
@@ -461,7 +465,7 @@ main.calendar-page {
   min-width: 0;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 15px;
+  font-size: 14.5px;
 }
 
 .data-table th {
@@ -600,11 +604,11 @@ main.calendar-page {
   height: 22px;
   max-width: 100%;
   padding: 0 8px 0 19px;
-  border-radius: 5px;
+  border-radius: 6px;
   background: radial-gradient(circle at 10px 50%, var(--c) 0 3px, transparent 3.6px), color-mix(in srgb, var(--c) 15%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 18%, transparent);
   color: color-mix(in srgb, var(--c) 40%, #fff);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -663,7 +667,7 @@ main.calendar-page {
 
 .tag-select {
   width: auto;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .tag-select:hover {
@@ -1233,7 +1237,7 @@ select option {
 .question {
   padding: 14px 16px 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
   transition: border-color .12s;
 }
@@ -1718,6 +1722,7 @@ select option {
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
   border-radius: 0;
+  border-color: rgba(255, 255, 255, .06);
 }
 
 .calendar-day {
@@ -1726,6 +1731,7 @@ select option {
   padding: 3px 4px 5px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
+  border-color: rgba(255, 255, 255, .06);
 }
 
 .calendar-day.outside {
@@ -1784,7 +1790,7 @@ select option {
   height: var(--calendar-event-height);
   padding: 0 4px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text);
@@ -1862,11 +1868,11 @@ select option {
 
 dialog {
   padding: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: var(--surface-2);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  background: var(--elevated);
   color: var(--text);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .3);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .4);
   opacity: 0;
   transform: translateY(8px) scale(.97);
   transition: opacity .18s ease, transform .2s cubic-bezier(.2, .8, .2, 1), overlay .2s allow-discrete, display .2s allow-discrete;
@@ -2186,8 +2192,8 @@ dialog::backdrop {
   max-width: calc(100vw - 40px);
   padding: 10px 16px;
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: #2f2f2f;
+  border-radius: 10px;
+  background: #2b2b2f;
   color: var(--text);
   font-size: 14px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
@@ -2429,7 +2435,7 @@ button.brand:hover {
   flex-direction: column;
   min-width: 0;
   padding: 6px;
-  border-radius: 10px;
+  border-radius: 12px;
   background: color-mix(in srgb, var(--c, #fff) 4%, transparent);
   transition: background-color .15s, box-shadow .15s;
 }
@@ -2471,7 +2477,7 @@ button.brand:hover {
   flex-direction: column;
   gap: 6px;
   padding: 10px 11px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--surface-2);
   box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgba(0, 0, 0, .25);
   cursor: pointer;
@@ -2812,7 +2818,7 @@ button.brand:hover {
 /* ---------- 지원 현황 표: 그룹과 행 구분 ---------- */
 
 .data-table tr.data-row td {
-  height: 42px;
+  height: 40px;
 }
 
 .data-table .group-gap td {
@@ -2874,6 +2880,9 @@ button.brand:hover {
 
 .data-table thead th {
   border-bottom-color: var(--border-strong);
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
 /* ---------- 다듬기: 제목 설명, 저장 표시, 토스트, 보드, 새 공고 창 날짜 ---------- */
@@ -3518,13 +3527,15 @@ main.view-enter > :not(.peek) {
 
 .goal-col {
   padding: 8px 12px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, .025);
+  border-radius: 12px;
+  background: var(--surface);
   transition: background-color .15s, box-shadow .15s;
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .goal-col[data-col=done] {
-  background: color-mix(in srgb, var(--c-green) 5%, transparent);
+  background: color-mix(in srgb, var(--c-green) 4%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-green) 14%, transparent);
 }
 
 .goal-col[data-col=done] h3 {
@@ -3556,8 +3567,9 @@ main.view-enter > :not(.peek) {
   height: 26px;
   margin: 0 0 4px;
   color: var(--text-3);
-  font-size: 12.5px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
 }
 
 .gb-col h3 > span {
@@ -3909,9 +3921,10 @@ main.view-enter > :not(.peek) {
   align-items: center;
   gap: 6px;
   margin: 0 0 4px;
-  color: var(--text-2);
-  font-size: 12.5px;
+  color: var(--text-3);
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: .02em;
 }
 
 .goal-group h3 span {
