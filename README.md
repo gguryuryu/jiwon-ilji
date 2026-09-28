@@ -17,10 +17,11 @@
 ### 3. 실행
 | | 실행 방법 |
 |---|---|
-| **윈도우** | 받은 폴더의 `start.bat`을 더블클릭합니다. 브라우저에 앱이 열리고, 검은 창은 앱이 켜져 있는 동안 떠 있습니다. **검은 창을 닫으면 앱이 꺼집니다.** |
+| **윈도우** | 받은 폴더의 `windows-app.bat`을 **한 번** 실행하면 바탕화면과 시작 메뉴에 **지원일지 아이콘**이 생깁니다. 아이콘을 누르면 지원일지가 독립된 앱 창으로 열리고, **창을 닫으면 앱도 꺼집니다.** 시작 메뉴에서 우클릭 → 작업 표시줄에 고정해 두면 편합니다. (아이콘 없이 쓰려면 `start.bat` — 검은 창을 닫을 때까지 켜져 있습니다) |
 | **맥** | `mac-app.command`를 한 번 실행하면 아이콘이 있는 `지원일지.app`이 만들어집니다. Dock에 끌어다 두고 누르면 열리고, Dock에서 종료하면 꺼집니다. (아이콘 없이 쓰려면 `start.command`) |
 
-- 브라우저 주소는 `http://127.0.0.1:4173` 입니다. 즐겨찾기해 두면 편합니다(앱이 켜져 있을 때만 열립니다).
+- 앱 주소는 `http://127.0.0.1:4173` 입니다(앱이 켜져 있을 때만 열립니다).
+- 앱 폴더를 다른 곳으로 옮겼다면 `windows-app.bat`(맥은 `mac-app.command`)을 다시 실행해 아이콘을 새로 만들어 주세요.
 - 처음 실행할 때 윈도우가 "PC 보호" 창을 띄우면 **추가 정보 → 실행**, 맥이 막으면 파일을 **우클릭 → 열기**를 한 번 해 주세요.
 
 ## 업데이트 받기
@@ -81,8 +82,8 @@ js/goals.js         지원 현황 위의 목표 · 해 온 것 보드, 목표 �
 js/postings.js      지원 현황(표·보드·단계 요약), posting-detail.js 상세, interview.js 면접 후기, peek.js 사이드 피크, date-field.js 날짜 칸
 js/experiences.js   경험 정리, calendar.js·ics.js·event-dialog.js 달력, posting-dialog.js 새 공고 창
 js/util.js, model.js, ui.js, dom.js   공통 도구, 상태 규칙, 알림·움직임, 자주 쓰는 화면 요소
-start.bat · start.command · mac-app.command   실행 파일(윈도우 · 맥 · 맥 앱 만들기), ai-key.*는 OpenAI 키 저장
-assets/icon.svg     앱 아이콘 원본
+windows-app.bat · mac-app.command   아이콘 바로가기/앱 만들기(윈도우 · 맥). start.bat · start.command는 아이콘 없이 실행, ai-key.*는 OpenAI 키 저장
+assets/             아이콘(icon.svg 원본, icon.ico), 윈도우 실행기(launch-windows.vbs: 서버를 --exit-when-closed로 켜고 Edge 앱 창으로 연다), 바로가기 만들기(make-shortcut.ps1)
 fonts/              Pretendard 글꼴(SIL Open Font License, fonts/OFL.txt)
 test/               자동 테스트(서버를 실제로 띄워 보는 테스트 포함)
 ```

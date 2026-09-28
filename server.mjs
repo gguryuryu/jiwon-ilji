@@ -287,11 +287,48 @@ function staticFile(pathname) {
   return filename.startsWith(join(root, folder) + sep) ? filename : null;
 }
 
+// ---------- 앱 창을 닫으면 꺼지기(--exit-when-closed, 윈도우 바로가기에서 사용) ----------
+// 열려 있는 화면은 30초마다 신호(ping)를 보내고, 닫힐 때 작별 신호(bye)를 보낸다.
+// 열린 화면이 하나도 없으면 저장을 마친 뒤 서버를 끈다. 닫힐 때 신호를 놓쳐도 idleMs 뒤에는 꺼진다.
+const exitWhenClosed = process.argv.includes('--exit-when-closed');
+const idleMs = Number(process.env.JIWON_IDLE_MS || 150_000);
+const clients = new Map();
+let lastSeen = Date.now();
+
+async function shutdown() {
+  await writeChain.catch(() => {});
+  server.close();
+  process.exit(0);
+}
+
+// 오래 신호가 없는 화면은 닫힌 것으로 보고, 열린 화면이 하나도 없으면 끈다(창이 늦게 떠도 idleMs는 기다린다).
+function sweep() {
+  const now = Date.now();
+  for (const [id, seen] of clients) if (now - seen > idleMs) clients.delete(id);
+  if (!clients.size && now - lastSeen > idleMs) shutdown();
+}
+
+if (exitWhenClosed) setInterval(sweep, Math.min(15_000, idleMs / 3)).unref();
+
+// 신호는 앱 화면만 보낼 수 있게 전용 헤더를 요구한다(다른 웹사이트는 이 헤더를 붙여 보낼 수 없다).
+async function presence(request, response, kind) {
+  if (request.headers['x-jiwon-ilji'] !== '1') return sendJson(response, 403, { error: '허용되지 않은 요청입니다.' });
+  const { id } = await readBody(request).catch(() => ({}));
+  if (typeof id !== 'string' || !id || id.length > 100) return sendJson(response, 400, { error: 'id가 필요합니다.' });
+  lastSeen = Date.now();
+  if (kind === 'ping') clients.set(id, lastSeen);
+  // 창을 닫으면 잠깐 기다렸다가(새로 고침이면 곧 다시 신호가 온다) 남은 화면이 없으면 끈다.
+  else { clients.delete(id); if (exitWhenClosed) setTimeout(() => { if (!clients.size) shutdown(); }, Number(process.env.JIWON_BYE_MS || 6000)); }
+  return sendJson(response, 200, { ok: true });
+}
+
 const server = http.createServer(async (request, response) => {
   try {
     if (!/^(?:127\.0\.0\.1|localhost)(?::\d+)?$/i.test(request.headers.host || '')) return sendJson(response, 403, { error: '허용되지 않은 요청입니다.' });
     const url = new URL(request.url, 'http://127.0.0.1');
     if (url.pathname === '/api/data' && request.method === 'GET') return sendJson(response, 200, await loadData());
+    if (url.pathname === '/api/ping' && request.method === 'POST') return presence(request, response, 'ping');
+    if (url.pathname === '/api/bye' && request.method === 'POST') return presence(request, response, 'bye');
     if (url.pathname === '/api/data' && request.method === 'PUT') {
       try { return sendJson(response, 200, { saved: true, revision: await saveData(await readBody(request)) }); }
       catch (error) {
@@ -367,4 +404,5 @@ server.on('error', async error => {
   process.exitCode = 1;
 });
 
-server.listen(port, '127.0.0.1', () => { console.log(`지원일지: ${appUrl}${process.stdout.isTTY ? ' (이 창을 닫으면 앱이 꺼집니다)' : ''}`); openBrowser(); });
+server.listen(port, '127.0.0.1', () => {
+  lastSeen = Date.now(); console.log(`지원일지: ${appUrl}${process.stdout.isTTY ? ' (이 창을 닫으면 앱이 꺼집니다)' : ''}`); openBrowser(); });

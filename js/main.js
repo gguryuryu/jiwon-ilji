@@ -272,6 +272,16 @@ $('#import-file').addEventListener('change', async event => {
   event.target.value = '';
 });
 
+// 이 화면이 열려 있다는 신호. 윈도우 바로가기(앱 창)로 켰을 때는 창을 모두 닫으면 서버가 스스로 꺼진다.
+function startPresence() {
+  const id = uid();
+  const send = kind => fetch(`/api/${kind}`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-Jiwon-Ilji': '1' }, body: JSON.stringify({ id }) }).catch(() => {});
+  send('ping');
+  setInterval(() => send('ping'), 30_000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') send('ping'); });
+  window.addEventListener('pagehide', () => send('bye'));
+}
+
 try {
   const response = await fetch('/api/data'); if (!response.ok) throw new Error('저장 파일을 열지 못했습니다.');
   const loaded = await response.json();
@@ -281,6 +291,7 @@ try {
   setRoute(route.view, route.id);
   history.replaceState({ scrollY: 0 }, '', routeHash(view, selectedId));
   render();
+  startPresence();
   try {
     calendarState.connected = Boolean((await (await fetch('/api/calendar')).json()).connected);
     if (calendarState.connected) { if (view === 'calendar') renderCalendar(); syncGoogleCalendar(); }

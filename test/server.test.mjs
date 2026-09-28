@@ -11,9 +11,9 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const port = 4900 + Math.floor(Math.random() * 90);
 
-function request(path, { method = 'GET', body = null, host = `127.0.0.1:${port}` } = {}) {
+function request(path, { method = 'GET', body = null, host = `127.0.0.1:${port}`, headers = {}, to = port } = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, path, method, headers: { host, 'content-type': 'application/json' } }, response => {
+    const req = http.request({ host: '127.0.0.1', port: to, path, method, headers: { host: host.replace(String(port), String(to)), 'content-type': 'application/json', ...headers } }, response => {
       const chunks = [];
       response.on('data', chunk => chunks.push(chunk));
       response.on('end', () => resolve({ status: response.statusCode, headers: response.headers, text: Buffer.concat(chunks).toString('utf8') }));
@@ -24,8 +24,8 @@ function request(path, { method = 'GET', body = null, host = `127.0.0.1:${port}`
   });
 }
 
-function startServer(dataDir) {
-  const child = spawn(process.execPath, ['server.mjs'], { cwd: root, env: { ...process.env, PORT: String(port), JOB_TRACKER_DATA_PATH: join(dataDir, 'job-search.json') } });
+function startServer(dataDir, { args = [], env = {}, at = port } = {}) {
+  const child = spawn(process.execPath, ['server.mjs', ...args], { cwd: root, env: { ...process.env, PORT: String(at), JOB_TRACKER_DATA_PATH: join(dataDir, 'job-search.json'), ...env } });
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });
   child.stderr.on('data', chunk => { output += chunk; });
@@ -33,9 +33,9 @@ function startServer(dataDir) {
   return { child, exited, output: () => output };
 }
 
-async function waitForServer() {
+async function waitForServer(to = port) {
   for (let attempt = 0; attempt < 50; attempt++) {
-    try { if ((await request('/api/data')).status === 200) return; } catch { /* 아직 뜨는 중 */ }
+    try { if ((await request('/api/data', { to })).status === 200) return; } catch { /* 아직 뜨는 중 */ }
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   throw new Error('서버가 뜨지 않았습니다.');
@@ -80,5 +80,44 @@ test('서버: 화면 파일, 저장 충돌, 경로·호스트 차단, 중복 실
     const second = startServer(dataDir);
     assert.equal(await second.exited, 0);
     assert.match(second.output(), /이미 실행 중/);
+  });
+});
+
+test('앱 창 모드(--exit-when-closed): 창을 닫거나 신호가 끊기면 서버가 스스로 꺼진다', async t => {
+  const dataDir = await mkdtemp(join(tmpdir(), 'jiwon-ilji-'));
+  t.after(() => rm(dataDir, { recursive: true, force: true }));
+  const signal = { 'x-jiwon-ilji': '1' };
+
+  await t.test('전용 헤더 없는 신호는 막고, 작별 신호를 받으면 꺼진다', async () => {
+    const at = port + 100;
+    const server = startServer(dataDir, { args: ['--exit-when-closed'], env: { JIWON_BYE_MS: '300' }, at });
+    t.after(() => server.child.kill());
+    await waitForServer(at);
+    assert.equal((await request('/api/ping', { method: 'POST', body: { id: 'a' }, to: at })).status, 403);
+    assert.equal((await request('/api/ping', { method: 'POST', body: { id: 'a' }, headers: signal, to: at })).status, 200);
+    assert.equal((await request('/api/ping', { method: 'POST', body: { id: 'b' }, headers: signal, to: at })).status, 200);
+    await request('/api/bye', { method: 'POST', body: { id: 'a' }, headers: signal, to: at });
+    await new Promise(resolve => setTimeout(resolve, 600));
+    assert.equal((await request('/api/data', { to: at })).status, 200, '다른 창(b)이 남아 있으면 켜져 있다');
+    await request('/api/bye', { method: 'POST', body: { id: 'b' }, headers: signal, to: at });
+    assert.equal(await server.exited, 0);
+  });
+
+  await t.test('아무 신호도 없으면 기다렸다가 꺼진다', async () => {
+    const at = port + 101;
+    const server = startServer(dataDir, { args: ['--exit-when-closed'], env: { JIWON_IDLE_MS: '600' }, at });
+    t.after(() => server.child.kill());
+    await waitForServer(at);
+    assert.equal(await server.exited, 0);
+  });
+
+  await t.test('앱 창 모드가 아니면 작별 신호를 받아도 켜져 있다', async () => {
+    const at = port + 102;
+    const server = startServer(dataDir, { env: { JIWON_BYE_MS: '100' }, at });
+    t.after(async () => { server.child.kill(); await server.exited; });
+    await waitForServer(at);
+    await request('/api/bye', { method: 'POST', body: { id: 'a' }, headers: signal, to: at });
+    await new Promise(resolve => setTimeout(resolve, 400));
+    assert.equal((await request('/api/data', { to: at })).status, 200);
   });
 });

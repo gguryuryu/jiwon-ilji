@@ -5,3 +5,5 @@
 *.icns binary
 *.ico binary
 *.png binary
+*.vbs binary
+*.ps1 text eol=crlf

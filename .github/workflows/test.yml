@@ -18,3 +18,30 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      # 친구 컴퓨터(윈도우)에서 쓰는 바로가기와 실행기를 실제 윈도우에서 확인한다.
+      - name: 윈도우 바로가기 · 실행기 · 창 닫으면 꺼지기
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          JIWON_TEST: '1'
+          PORT: '4190'
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File assets/make-shortcut.ps1
+          foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
+            $link = Join-Path $folder '지원일지.lnk'
+            if (-not (Test-Path $link)) { throw "바로가기가 없습니다: $link" }
+            $target = (New-Object -ComObject WScript.Shell).CreateShortcut($link)
+            Write-Host "$link -> $($target.TargetPath) $($target.Arguments) [$($target.IconLocation)]"
+          }
+          cscript //nologo assets/launch-windows.vbs
+          if ($LASTEXITCODE -ne 0) { throw '실행기가 서버를 켜지 못했습니다' }
+          $page = Invoke-WebRequest http://127.0.0.1:4190/js/main.js -UseBasicParsing
+          if ($page.StatusCode -ne 200) { throw '화면 파일을 받지 못했습니다' }
+          $headers = @{ 'X-Jiwon-Ilji' = '1' }
+          Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4190/api/ping -Headers $headers -ContentType 'application/json' -Body '{"id":"ci"}' | Out-Null
+          Invoke-RestMethod -Method Post -Uri http://127.0.0.1:4190/api/bye -Headers $headers -ContentType 'application/json' -Body '{"id":"ci"}' | Out-Null
+          Start-Sleep -Seconds 10
+          $stillUp = $true
+          try { Invoke-WebRequest http://127.0.0.1:4190/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }
+          if ($stillUp) { throw '앱 창을 닫았는데 서버가 꺼지지 않았습니다' }
+          Write-Host '창을 닫자 서버가 꺼졌습니다'
