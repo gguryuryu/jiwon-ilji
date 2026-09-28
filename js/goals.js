@@ -1,6 +1,6 @@
 // 지원 현황 위의 '목표 · 자격' 두 줄: 진행 중인 목표와 가진 자격을 간단히 보고, 눌러서 고친다.
 import { $, main } from './dom.js';
-import { addMonths, goalProgress, goalStatuses, isLanguageTest, monthLabel, newCert, newGoal, splitCertTitle } from './model.js';
+import { addMonths, goalProgress, goalStatuses, isLanguageTest, monthLabel, newCert, newGoal, normalizeMonth, splitCertTitle } from './model.js';
 import { navTo } from './router.js';
 import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
@@ -270,14 +270,36 @@ function openGoalDialog(goal) {
   if (!dialog.open) dialog.showModal();
   // 글 입력칸 높이는 창이 열린 뒤에야 잴 수 있다.
   dialog.querySelectorAll('textarea').forEach(autoGrow);
-  (goal.title ? dialog.querySelector('[data-close].primary-button') : dialog.querySelector('.goal-title-input')).focus();
+  // 창이 낮을 때 아래쪽 '확인'에 포커스를 주면 사파리가 창을 아래로 스크롤해 제목·종류·상태가 잘린다.
+  // 그래서 맨 위의 닫기(×) 버튼에 포커스를 준다(자동 저장이라 Enter로 닫아도 같다).
+  (goal.title ? dialog.querySelector('.dialog-top [data-close]') : dialog.querySelector('.goal-title-input')).focus({ preventScroll: true });
+  dialog.scrollTop = 0;
 }
 
 // ---------- 자격증 창 ----------
+// 연·월 고르기. 사파리(맥 앱)는 달 입력칸(type=month)을 지원하지 않아 목록 두 개로 고른다.
+function monthPickerHtml(name, label, value, fromYear, toYear) {
+  const [year, month] = (normalizeMonth(value) || '-').split('-');
+  const years = []; for (let y = toYear; y >= fromYear; y--) years.push(String(y));
+  if (year && !years.includes(year)) years.push(year);
+  return `<div class="month-field"><span class="field-label">${label}</span><div class="month-picker" data-month-of="${name}">
+    <select data-part="year" aria-label="${label} 연도"><option value="">연도</option>${years.map(y => `<option value="${y}"${y === year ? ' selected' : ''}>${y}년</option>`).join('')}</select>
+    <select data-part="month" aria-label="${label} 월"><option value="">월</option>${Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0')).map(m => `<option value="${m}"${m === month ? ' selected' : ''}>${Number(m)}월</option>`).join('')}</select></div></div>`;
+}
+
+function setMonthPicker(dialog, name, value) {
+  const [year = '', month = ''] = value ? value.split('-') : [];
+  const picker = dialog.querySelector(`.month-picker[data-month-of="${name}"]`); if (!picker) return;
+  const yearSelect = picker.querySelector('[data-part=year]');
+  if (year && ![...yearSelect.options].some(option => option.value === year)) yearSelect.add(new Option(`${year}년`, year));
+  yearSelect.value = year; picker.querySelector('[data-part=month]').value = month;
+}
+
 function certDialogHtml(cert) {
-  const field = (name, label, type, placeholder) => `<label class="${type === 'month' ? '' : 'full'}">${label}<input name="${name}" type="${type}" value="${escapeHtml(cert[name] || '')}" placeholder="${placeholder}" autocomplete="off"></label>`;
+  const field = (name, label, type, placeholder) => `<label class="full">${label}<input name="${name}" type="${type}" value="${escapeHtml(cert[name] || '')}" placeholder="${placeholder}" autocomplete="off"></label>`;
+  const thisYear = new Date().getFullYear();
   return `<div class="dialog-top"><div><p class="eyebrow">자격 · 스펙</p><h2>${cert.name ? escapeHtml(cert.name) : '새 자격'}</h2></div><button type="button" class="icon-button" data-close aria-label="닫기">×</button></div>
-    <div class="form-grid">${field('name', '이름', 'text', '예: 정보처리기사, TOEIC')}${field('score', '점수 · 등급', 'text', '예: 875점, 1급, IH')}${field('acquired', '취득', 'month', '')}${field('expires', '유효기간 끝 (있으면)', 'month', '')}<label class="full">메모<input name="note" value="${escapeHtml(cert.note || '')}" placeholder="자격번호, 발급기관 등" autocomplete="off"></label></div>
+    <div class="form-grid">${field('name', '이름', 'text', '예: 정보처리기사, TOEIC')}${field('score', '점수 · 등급', 'text', '예: 875점, 1급, IH')}${monthPickerHtml('acquired', '취득', cert.acquired, thisYear - 20, thisYear)}${monthPickerHtml('expires', '유효기간 끝 (있으면)', cert.expires, thisYear - 5, thisYear + 10)}<label class="full">메모<input name="note" value="${escapeHtml(cert.note || '')}" placeholder="자격번호, 발급기관 등" autocomplete="off"></label></div>
     <p class="field-help cert-hint" aria-live="polite">${certHistoryHtml(cert)}</p>
     <div class="dialog-actions"><button type="button" class="ghost-button danger" data-delete>${icon('trash')}삭제</button><span class="dialog-spacer"></span><button type="button" class="primary-button" data-close>확인</button></div>`;
 }
@@ -291,12 +313,22 @@ function openCertDialog(cert) {
   dialog.innerHTML = certDialogHtml(cert);
   const before = { score: cert.score, acquired: cert.acquired, expires: cert.expires };
   dialog.oninput = event => {
-    const name = event.target.name; if (!name) return;
-    cert[name] = event.target.value;
-    if (name === 'name') dialog.querySelector('h2').textContent = event.target.value || '새 자격';
+    // 연·월 목록: 연도만 고르면 1월로 채우고, 연도를 비우면 날짜를 지운다.
+    const picker = event.target.closest('.month-picker');
+    let name = event.target.name; let value = event.target.value;
+    if (picker) {
+      name = picker.dataset.monthOf;
+      const yearSelect = picker.querySelector('[data-part=year]'); const monthSelect = picker.querySelector('[data-part=month]');
+      if (yearSelect.value && !monthSelect.value) monthSelect.value = '01';
+      if (!yearSelect.value) monthSelect.value = '';
+      value = yearSelect.value ? `${yearSelect.value}-${monthSelect.value}` : '';
+    }
+    if (!name) return;
+    cert[name] = value;
+    if (name === 'name') dialog.querySelector('h2').textContent = value || '새 자격';
     // 어학 성적은 취득 달을 넣으면 유효기간(2년)을 채운다. 직접 적은 유효기간은 건드리지 않는다.
     if (name === 'acquired' && isLanguageTest(cert.name) && cert.acquired && (!before.expires || cert.expires === before.expires)) {
-      cert.expires = addMonths(cert.acquired, 24); dialog.querySelector('input[name=expires]').value = cert.expires;
+      cert.expires = addMonths(cert.acquired, 24); setMonthPicker(dialog, 'expires', cert.expires);
       dialog.querySelector('.cert-hint').textContent = '어학 성적이라 유효기간을 2년 뒤로 채웠어요.';
     }
     touch(cert); scheduleSave();
@@ -321,7 +353,9 @@ function openCertDialog(cert) {
   };
   dialog.onclose = () => { if (!dialog.open) onClosed(); };
   if (!dialog.open) dialog.showModal();
-  dialog.querySelector(cert.name ? (cert.score ? '[data-close].primary-button' : 'input[name=score]') : 'input[name=name]').focus();
+  // 창이 낮을 때 아래쪽 버튼에 포커스가 가며 위가 잘리지 않게, 스크롤하지 않고 포커스만 준다.
+  dialog.querySelector(cert.name ? (cert.score ? '.dialog-top [data-close]' : 'input[name=score]') : 'input[name=name]').focus({ preventScroll: true });
+  dialog.scrollTop = 0;
 }
 
 // ---------- 목표 · 자격 줄의 클릭 ----------

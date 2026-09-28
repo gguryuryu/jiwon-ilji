@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { parseTime, escapeHtml, charCount, formatDateLong, clone } from '../js/util.js';
 import { mergeInto } from '../js/merge.js';
 import { parseIcs } from '../js/ics.js';
-import { essayToQuestions, migrate, isPostingEvent, shownTime, groupFor, speakingTime, askedQuestions, reviewRound, defaultDetailTab, goalProgress, monthLabel, splitCertTitle, isLanguageTest, addMonths } from '../js/model.js';
+import { essayToQuestions, migrate, isPostingEvent, shownTime, groupFor, speakingTime, askedQuestions, reviewRound, defaultDetailTab, goalProgress, monthLabel, splitCertTitle, isLanguageTest, addMonths, normalizeMonth } from '../js/model.js';
 import { data, experienceUses } from '../js/state.js';
 
 test('시각 입력을 여러 모양으로 받아 HH:MM으로 바꾼다', () => {
@@ -216,4 +216,14 @@ test('어학 성적을 알아보고, 유효기간은 달 단위로 더한다', (
   assert.equal(addMonths('2026-03', 24), '2028-03');
   assert.equal(addMonths('2026-11', 3), '2027-02');
   assert.equal(addMonths('', 3), '');
+});
+
+test('자격 날짜를 YYYY-MM으로 맞추고, 불러올 때 예전에 글자로 적힌 날짜도 고친다', () => {
+  assert.equal(normalizeMonth('2026.3'), '2026-03');
+  assert.equal(normalizeMonth('2026년 11월'), '2026-11');
+  assert.equal(normalizeMonth('2026-03'), '2026-03');
+  assert.equal(normalizeMonth('2026-13'), '');
+  assert.equal(normalizeMonth('작년'), '');
+  const value = migrate({ postings: [], experiences: [], calendarEvents: [], certs: [{ id: 'c', name: 'TOEIC', acquired: '2026.03', expires: '2028년 3월', history: [{ score: '800', acquired: '2025. 1' }] }] });
+  assert.deepEqual([value.certs[0].acquired, value.certs[0].expires, value.certs[0].history[0].acquired], ['2026-03', '2028-03', '2025-01']);
 });

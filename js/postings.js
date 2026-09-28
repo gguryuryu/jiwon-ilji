@@ -144,7 +144,7 @@ export const boardColumns = [
   { key: 'interest', title: '관심', color: 'gray', statuses: ['관심'], drop: '관심' },
   { key: 'writing', title: '자소서 작성 중', color: 'yellow', statuses: ['자소서 작성 중'], drop: '자소서 작성 중' },
   { key: 'applied', title: '지원 · 서류', color: 'blue', statuses: ['지원 완료', '서류 심사 중'], drop: '지원 완료' },
-  { key: 'written', title: '필기', color: 'orange', statuses: ['필기 전형 예정'], drop: '필기 전형 예정' },
+  { key: 'written', title: '필기', color: 'teal', statuses: ['필기 전형 예정'], drop: '필기 전형 예정' },
   { key: 'interview', title: '면접', color: 'purple', statuses: ['1차 면접 예정', '2차 면접 예정', '최종 결과 대기'], drop: '1차 면접 예정' },
   { key: 'passed', title: '최종 합격', color: 'green', statuses: ['최종 합격'], drop: '최종 합격' },
   { key: 'closed', title: '종료', color: 'red', statuses: ['서류 불합격', '필기 불합격', '1차 면접 불합격', '2차 면접 불합격', '최종 불합격', '지원 포기'], drop: null },

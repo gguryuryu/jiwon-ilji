@@ -272,6 +272,9 @@ $('#import-file').addEventListener('change', async event => {
   event.target.value = '';
 });
 
+// 맥 앱처럼 화면을 감싼 쪽에서 알림을 띄울 수 있게 한다(예: 백업 파일 저장 완료).
+window.addEventListener('jiwon:toast', event => showToast(String(event.detail || '')));
+
 // 이 화면이 열려 있다는 신호. 윈도우 바로가기(앱 창)로 켰을 때는 창을 모두 닫으면 서버가 스스로 꺼진다.
 function startPresence() {
   const id = uid();

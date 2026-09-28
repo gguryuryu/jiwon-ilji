@@ -16,7 +16,7 @@ export const employmentOptions = ['정규직', '인턴', '계약직', '무기계
 
 // 진행 상태마다 노션 선택 속성처럼 고유한 색을 준다.
 const statusColors = {
-  '관심': 'gray', '자소서 작성 중': 'yellow', '지원 완료': 'blue', '서류 심사 중': 'blue', '필기 전형 예정': 'orange', '1차 면접 예정': 'purple', '2차 면접 예정': 'purple',
+  '관심': 'gray', '자소서 작성 중': 'yellow', '지원 완료': 'blue', '서류 심사 중': 'blue', '필기 전형 예정': 'teal', '1차 면접 예정': 'purple', '2차 면접 예정': 'purple',
   '최종 결과 대기': 'pink', '서류 불합격': 'red', '필기 불합격': 'red', '1차 면접 불합격': 'red', '2차 면접 불합격': 'red', '최종 불합격': 'red', '최종 합격': 'green', '지원 포기': 'brown',
 };
 
@@ -113,6 +113,13 @@ export function addMonths(month, count) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// 자격 취득·유효기간 달을 'YYYY-MM'으로 맞춘다. '2026.3', '2026년 3월', '2026-03' 모두 받는다. 알아볼 수 없으면 ''.
+export function normalizeMonth(value) {
+  const match = String(value || '').match(/(\d{4})\D{0,3}(\d{1,2})/);
+  if (!match || Number(match[2]) < 1 || Number(match[2]) > 12) return '';
+  return `${match[1]}-${match[2].padStart(2, '0')}`;
+}
+
 // 'YYYY-MM' → '10월' (올해가 아니면 '2027년 3월')
 export function monthLabel(month) {
   const [year, value] = String(month || '').split('-').map(Number);
@@ -123,6 +130,11 @@ export function monthLabel(month) {
 export function migrate(value) {
   if (!Array.isArray(value.goals)) value.goals = [];
   if (!Array.isArray(value.certs)) value.certs = [];
+  // 사파리(맥 앱)에서 달 입력칸이 글자 칸으로 보이던 때 적힌 날짜도 형식을 맞춘다.
+  for (const cert of value.certs) {
+    for (const key of ['acquired', 'expires']) if (cert[key]) cert[key] = normalizeMonth(cert[key]) || cert[key];
+    for (const entry of cert.history || []) if (entry.acquired) entry.acquired = normalizeMonth(entry.acquired) || entry.acquired;
+  }
   // '새 경험'만 누르고 아무것도 쓰지 않은 빈 경험은 정리한다.
   value.experiences = value.experiences.filter(item => !blankExperience(item));
   for (const item of value.postings) {

@@ -45,6 +45,7 @@
   --c-purple: #9d7ee2;
   --c-pink: #d9709f;
   --c-red: #e06a5f;
+  --c-teal: #45b1a8;
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --radius: 6px;
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
@@ -644,6 +645,10 @@ main.calendar-page {
 
 .tag-red {
   --c: var(--c-red);
+}
+
+.tag-teal {
+  --c: var(--c-teal);
 }
 
 .tag-select,
@@ -2972,6 +2977,19 @@ button.brand:hover {
   gap: 6px;
 }
 
+/* 자격 창의 연·월 고르기 */
+
+.month-field {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.month-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
 .field-label {
   color: var(--text-2);
   font-size: 13px;
@@ -4258,6 +4276,11 @@ ul.goal-group,
 }
 
 @media (max-width: 900px) {
+  /* 좁은 창에서 달력 제목 줄이 두 줄이 되지 않게: 안내 문구는 숨기고 버튼은 아이콘만 */
+  .calendar-toolbar .source-note,
+  .calendar-toolbar .btn-label {
+    display: none;
+  }
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4341,8 +4364,17 @@ ul.goal-group,
     width: 100%;
     border-left: 0;
   }
+  /* 좁은 창에서는 세 칸을 세로로 쌓지 않고 옆으로 밀어서 넘겨 본다. */
   .goal-board {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: none;
+    grid-auto-columns: minmax(240px, 80%);
+    grid-auto-flow: column;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .goal-col {
+    scroll-snap-align: start;
   }
   .peek-scroll {
     padding: 12px 20px 96px;
