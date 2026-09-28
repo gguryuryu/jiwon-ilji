@@ -32,14 +32,16 @@ jobs:
           Copy-Item -Recurse -Force -Path * -Destination $korean
           powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $korean 'assets\make-shortcut.ps1')
           if ($LASTEXITCODE -ne 0) { throw '바로가기를 만들지 못했습니다' }
-          $shortcut = $null
           foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
             $link = Join-Path $folder '지원일지.lnk'
             if (-not (Test-Path -LiteralPath $link)) { throw "바로가기가 없습니다: $link" }
-            $shortcut = (New-Object -ComObject Shell.Application).NameSpace($folder).ParseName('지원일지.lnk').GetLink
-            Write-Host "$link -> $($shortcut.Path) $($shortcut.Arguments) [$($shortcut.WorkingDirectory)]"
           }
-          $vbs = $shortcut.Arguments.Trim('"')
+          # 바로가기 안에 저장된 실행기 경로를 유니코드로 읽어, 한글 경로가 그대로인지 확인한다.
+          $bytes = [IO.File]::ReadAllBytes((Join-Path ([Environment]::GetFolderPath('Desktop')) '지원일지.lnk'))
+          $text = [Text.Encoding]::Unicode.GetString($bytes) + [Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1)
+          $vbs = Join-Path $korean 'assets\launch-windows.vbs'
+          if (-not $text.Contains($vbs)) { throw "바로가기 안의 경로가 깨졌습니다(기대: $vbs)" }
+          Write-Host "바로가기 경로 확인: $vbs"
           if (-not (Test-Path -LiteralPath $vbs)) { throw "바로가기가 가리키는 실행기가 없습니다(한글 경로가 깨졌을 수 있음): $vbs" }
           cscript //nologo $vbs
           if ($LASTEXITCODE -ne 0) { throw '실행기가 서버를 켜지 못했습니다' }

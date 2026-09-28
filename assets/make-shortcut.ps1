@@ -1,21 +1,70 @@
 ﻿# 바탕화면과 시작 메뉴에 '지원일지' 바로가기를 만든다(아이콘 포함). windows-app.bat이 실행한다.
-# 옛 바로가기 저장 기능(WScript.Shell)은 한글 파일 이름을 저장하지 못하므로, 영문 이름으로 저장한 뒤 한글 이름으로 바꾼다.
+# 옛 WScript.Shell 바로가기 기능은 한글(파일 이름, 한글 사용자 폴더 경로)을 '??'로 깨뜨리므로,
+# 윈도우의 유니코드 바로가기 기능(IShellLinkW)을 직접 호출한다.
 $ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+
+namespace JiwonIlji {
+  [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+  class ShellLink {}
+
+  [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("000214F9-0000-0000-C000-000000000046")]
+  interface IShellLinkW {
+    void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cch, IntPtr pfd, int fFlags);
+    void GetIDList(out IntPtr ppidl);
+    void SetIDList(IntPtr pidl);
+    void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cch);
+    void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+    void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cch);
+    void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+    void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cch);
+    void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+    void GetHotkey(out short pwHotkey);
+    void SetHotkey(short wHotkey);
+    void GetShowCmd(out int piShowCmd);
+    void SetShowCmd(int iShowCmd);
+    void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cch, out int piIcon);
+    void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+    void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, int dwReserved);
+    void Resolve(IntPtr hwnd, int fFlags);
+    void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+  }
+
+  public static class Shortcut {
+    public static void Save(string path, string target, string arguments, string directory, string icon, string description) {
+      IShellLinkW link = (IShellLinkW)new ShellLink();
+      link.SetPath(target);
+      link.SetArguments(arguments);
+      link.SetWorkingDirectory(directory);
+      link.SetIconLocation(icon, 0);
+      link.SetDescription(description);
+      ((IPersistFile)link).Save(path, false);
+    }
+
+    public static string Arguments(string path) {
+      IShellLinkW link = (IShellLinkW)new ShellLink();
+      ((IPersistFile)link).Load(path, 0);
+      StringBuilder text = new StringBuilder(1024);
+      link.GetArguments(text, text.Capacity);
+      return text.ToString();
+    }
+  }
+}
+"@
+
 $root = Split-Path -Parent $PSScriptRoot
 $launcher = Join-Path $root 'assets\launch-windows.vbs'
-$shell = New-Object -ComObject WScript.Shell
 $made = @()
 foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
-  $temporary = Join-Path $folder 'jiwon-ilji-shortcut.lnk'
-  $path = Join-Path $folder ('지원일지' + '.lnk')
-  $link = $shell.CreateShortcut($temporary)
-  $link.TargetPath = Join-Path $env:SystemRoot 'System32\wscript.exe'
-  $link.Arguments = '"' + $launcher + '"'
-  $link.WorkingDirectory = $root
-  $link.IconLocation = (Join-Path $root 'assets\icon.ico') + ',0'
-  $link.Description = 'Jiwon-ilji'
-  $link.Save()
-  Move-Item -LiteralPath $temporary -Destination $path -Force
+  $path = Join-Path $folder '지원일지.lnk'
+  [JiwonIlji.Shortcut]::Save($path, (Join-Path $env:SystemRoot 'System32\wscript.exe'), ('"' + $launcher + '"'), $root, (Join-Path $root 'assets\icon.ico'), '지원일지')
+  # 저장한 바로가기를 다시 읽어 경로가 깨지지 않았는지 확인한다.
+  $saved = [JiwonIlji.Shortcut]::Arguments($path).Trim('"')
+  if (-not (Test-Path -LiteralPath $saved)) { throw "바로가기 경로를 확인하지 못했습니다: $saved" }
   $made += $path
 }
 Write-Host '바로가기를 만들었어요:'
