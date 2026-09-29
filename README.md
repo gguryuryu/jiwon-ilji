@@ -84,7 +84,7 @@ js/experiences.js   경험 정리, calendar.js·ics.js·event-dialog.js 달력, 
 js/util.js, model.js, ui.js, dom.js   공통 도구, 상태 규칙, 알림·움직임, 자주 쓰는 화면 요소
 지원일지.app        맥 네이티브 앱(WKWebView 창, 인텔·애플 실리콘 겸용). 소스는 mac/main.swift, 다시 만들 때는 mac/build.command
 windows-app.bat     윈도우 아이콘 바로가기 만들기. start.bat · start.command는 아이콘 없이 실행, ai-key.*는 OpenAI 키 저장
-assets/             아이콘(icon.svg 원본, icon.ico), 윈도우 실행기(launch-windows.vbs: 서버를 --exit-when-closed로 켜고 Edge 앱 창으로 연다), 바로가기 만들기(make-shortcut.ps1)
+assets/             아이콘(icon.svg 원본, icon-transparent.ico), 윈도우 실행기(launch-windows.vbs: 서버를 --exit-when-closed로 켜고 Edge 앱 창으로 연다), 바로가기 만들기(make-shortcut.ps1)
 fonts/              Pretendard 글꼴(SIL Open Font License, fonts/OFL.txt)
 test/               자동 테스트(서버를 실제로 띄워 보는 테스트 포함)
 ```

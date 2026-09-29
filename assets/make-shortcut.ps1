@@ -61,7 +61,7 @@ $launcher = Join-Path $root 'assets\launch-windows.vbs'
 $made = @()
 foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
   $path = Join-Path $folder '지원일지.lnk'
-  [JiwonIlji.Shortcut]::Save($path, (Join-Path $env:SystemRoot 'System32\wscript.exe'), ('"' + $launcher + '"'), $root, (Join-Path $root 'assets\icon.ico'), '지원일지')
+  [JiwonIlji.Shortcut]::Save($path, (Join-Path $env:SystemRoot 'System32\wscript.exe'), ('"' + $launcher + '"'), $root, (Join-Path $root 'assets\icon-transparent.ico'), '지원일지')
   # 저장한 바로가기를 다시 읽어 경로가 깨지지 않았는지 확인한다.
   $saved = [JiwonIlji.Shortcut]::Arguments($path).Trim('"')
   if (-not (Test-Path -LiteralPath $saved)) { throw "바로가기 경로를 확인하지 못했습니다: $saved" }
