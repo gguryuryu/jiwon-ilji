@@ -1,6 +1,7 @@
 // 주소(#/…)와 화면 이동, 뒤로 가기
 import { renderCalendar } from './calendar.js';
 import { renderStudy } from './study.js';
+import { renderLab, startTicking } from './lab.js';
 import { main } from './dom.js';
 import { renderExperienceDetail, renderExperiences } from './experiences.js';
 import { blankExperience } from './model.js';
@@ -12,7 +13,7 @@ import { persist, saveCurrentEditor } from './store.js';
 import { reducedMotion } from './ui.js';
 
 // 화면 이동을 브라우저 기록에 남겨 뒤로·앞으로 가기(마우스 버튼, ⌘[ 포함)가 동작하게 한다.
-export const routeHash = (next, id) => next === 'postings' && id ? `#/peek/${id}` : ({ 'posting-detail': `#/postings/${id}`, calendar: '#/calendar', study: '#/study', experiences: '#/experiences', 'experience-detail': `#/experiences/${id}` })[next] || '#/';
+export const routeHash = (next, id) => next === 'postings' && id ? `#/peek/${id}` : ({ 'posting-detail': `#/postings/${id}`, calendar: '#/calendar', study: '#/study', lab: '#/lab', experiences: '#/experiences', 'experience-detail': `#/experiences/${id}` })[next] || '#/';
 
 export function routeFrom(hash) {
   const [, section = '', id = ''] = decodeURIComponent(hash || '').replace(/^#/, '').split('/');
@@ -21,6 +22,7 @@ export function routeFrom(hash) {
   if (section === 'experiences') return id ? { view: 'experience-detail', id } : { view: 'experiences', id: null };
   if (section === 'calendar') return { view: 'calendar', id: null };
   if (section === 'study') return { view: 'study', id: null };
+  if (section === 'lab') return { view: 'lab', id: null };
   return { view: 'postings', id: null };
 }
 
@@ -82,8 +84,11 @@ export function render() {
   else if (view === 'posting-detail') renderPostingDetail();
   else if (view === 'calendar') renderCalendar();
   else if (view === 'study') renderStudy();
+  else if (view === 'lab') renderLab();
   else if (view === 'experiences') renderExperiences();
   else if (view === 'experience-detail') renderExperienceDetail();
+  // 실험실 밖에 있어도 도는 while의 남은 시간을 창 제목에 보여 주고, 뽀모도로가 끝나면 알린다.
+  if (view !== 'lab') startTicking();
   updatePeek();
   const peekBody = main.querySelector('#peek .peek-scroll'); if (peekBody) peekBody.scrollTop = peekScroll;
 }

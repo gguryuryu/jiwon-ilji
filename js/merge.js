@@ -4,7 +4,7 @@ import { clone, same } from './util.js';
 // 세 갈래 합치기: 기준(base)에서 이 창이 고친 칸은 이 창 값을, 다른 창만 고친 칸은 그쪽 값을 쓴다.
 // 편집 중인 화면이 들고 있는 객체를 그대로 두기 위해, 이 창의 객체 안으로 합친다.
 export function mergeInto(local, base, server) {
-  for (const key of ['postings', 'experiences', 'goals', 'certs', 'studyRoutines', 'studyBooks', 'studyLogs']) {
+  for (const key of ['postings', 'experiences', 'goals', 'certs', 'studyRoutines', 'studyBooks', 'studyLogs', 'labBlocks']) {
     const baseById = new Map((base[key] || []).map(item => [item.id, item]));
     const serverById = new Map((server[key] || []).map(item => [item.id, item]));
     local[key] ||= [];

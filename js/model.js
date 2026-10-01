@@ -130,7 +130,7 @@ export function monthLabel(month) {
 export function migrate(value) {
   if (!Array.isArray(value.goals)) value.goals = [];
   if (!Array.isArray(value.certs)) value.certs = [];
-  for (const key of ['studyRoutines', 'studyBooks', 'studyLogs']) if (!Array.isArray(value[key])) value[key] = [];
+  for (const key of ['studyRoutines', 'studyBooks', 'studyLogs', 'labBlocks']) if (!Array.isArray(value[key])) value[key] = [];
   // 잠깐 있던 공부 기록 형식(숫자 칸·전공 목차·오답·모의고사)은 루틴·교재로 바뀌어 지운다.
   for (const key of ['studyChapters', 'studyDays', 'studyMocks']) delete value[key];
   // 사파리(맥 앱)에서 달 입력칸이 글자 칸으로 보이던 때 적힌 날짜도 형식을 맞춘다.
