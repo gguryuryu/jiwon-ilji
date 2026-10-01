@@ -9,9 +9,10 @@
 [nodejs.org](https://nodejs.org)에서 **LTS** 버전(22 이상)을 받아 설치합니다. 설치 화면은 모두 기본값으로 넘기면 됩니다.
 
 ### 2. 앱 받기
-공개 저장소라서 GitHub 로그인 없이 받을 수 있습니다. 둘 중 편한 방법으로 받으세요.
+공개 저장소라서 GitHub 로그인 없이 받을 수 있습니다. 셋 중 편한 방법으로 받으세요.
 
-- **GitHub Desktop (추천, 명령어 없이)**: [desktop.github.com](https://desktop.github.com)을 설치 → File → Clone repository → URL 탭에 `https://github.com/gguryuryu/jiwon-ilji.git` 입력 → Clone
+- **ZIP으로 받기 (가장 간단, Git 필요 없음)**: [저장소 페이지](https://github.com/gguryuryu/jiwon-ilji)에서 초록색 **Code → Download ZIP** → 원하는 곳에 압축 풀기
+- **GitHub Desktop**: [desktop.github.com](https://desktop.github.com)을 설치 → File → Clone repository → URL 탭에 `https://github.com/gguryuryu/jiwon-ilji.git` 입력 → Clone
 - **git 명령어**: `git clone https://github.com/gguryuryu/jiwon-ilji.git`
 
 ### 3. 실행
@@ -25,10 +26,13 @@
 - 처음 실행할 때 윈도우가 "PC 보호" 창을 띄우면 **추가 정보 → 실행**을 눌러 주세요. 맥에서 "열 수 없다"고 막으면 **시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기**를 한 번 눌러 주세요(GitHub Desktop으로 받으면 보통 뜨지 않습니다).
 
 ## 업데이트 받기
-왼쪽 아래 **업데이트**를 누르면 작성 중인 내용을 저장한 뒤 GitHub에서 새 버전을 가져옵니다(빨리 감기만 하고 병합은 하지 않음). 업데이트를 받은 뒤 앱을 껐다 켜면 적용됩니다. 공개 저장소라 로그인은 필요 없습니다.
-컴퓨터에 Git만 있으면 되고, GitHub Desktop을 설치했다면 그 안에 든 Git을 찾아 씁니다. 이 컴퓨터에서 앱 코드 파일을 수정했다면 자동으로 덮어쓰지 않고 안내합니다. PR용 브랜치에 있다가 그 브랜치가 GitHub에서 지워졌으면, 내용이 이미 main에 합쳐진 경우에만 main으로 옮겨서 받습니다.
-버튼 대신 **GitHub Desktop의 Fetch origin → Pull origin**이나 `git pull`로 직접 업데이트해도 됩니다.
-처음 업데이트 버튼을 받는 한 번은 기존 방식으로 Pull한 뒤 앱을 다시 켜 주세요.
+왼쪽 아래 **업데이트**를 누르면 작성 중인 내용을 저장한 뒤 GitHub에서 새 버전을 가져옵니다. 업데이트를 받은 뒤 앱을 껐다 켜면 적용됩니다. 공개 저장소라 로그인은 필요 없습니다.
+
+- **ZIP으로 받았거나 Git이 없는 컴퓨터**: GitHub에서 최신 코드 압축 파일을 받아 앱 파일만 바꿉니다. 받은 버전은 `.app-version.json`에 적어 두고, 새 버전에서 빠진 앱 파일은 지웁니다. 앱 코드를 직접 고쳤다면 그 수정은 새 버전으로 덮어써집니다(직접 만든 새 파일은 그대로 둡니다).
+- **Git으로 받은 폴더**: `git fetch` 뒤 빨리 감기로만 반영합니다(병합 커밋을 만들지 않음). 컴퓨터에 Git이 있으면 되고, GitHub Desktop을 설치했다면 그 안에 든 Git을 찾아 씁니다. 앱 코드 파일을 수정했다면 덮어쓰지 않고 안내합니다. PR용 브랜치가 GitHub에서 지워졌으면, 내용이 이미 main에 합쳐진 경우에만 main으로 옮겨서 받습니다.
+- 버튼 대신 GitHub Desktop의 **Fetch origin → Pull origin**이나 `git pull`로 직접 업데이트해도 됩니다.
+
+업데이트 버튼이 없거나 예전 버전에서 버튼이 실패하면, 한 번만 위 방법(또는 ZIP 새로 받기)으로 직접 받은 뒤 앱을 다시 켜 주세요.
 내 기록(`data` 폴더)은 업데이트해도 그대로 남습니다.
 
 ## 내 기록과 백업

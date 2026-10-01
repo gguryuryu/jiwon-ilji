@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, stat, access } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createGitUpdater, desktopGitCandidates } from '../lib/update.mjs';
+import { createGitUpdater, createUpdater, desktopGitCandidates } from '../lib/update.mjs';
 
 const exec = promisify(execFile);
 const git = async (cwd, ...args) => (await exec('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }, windowsHide: true })).stdout.trim();
@@ -116,4 +117,98 @@ test('GitHub Desktop의 윈도우 설치 폴더는 새 버전부터 확인한다
   const candidates = await desktopGitCandidates('win32', { LOCALAPPDATA: dir });
   assert.equal(candidates.length, 2);
   assert.equal(candidates[0], join(dir, 'GitHubDesktop', 'app-3.10.0', 'resources', 'app', 'git', 'cmd', 'git.exe'));
+});
+
+// GitHub 압축 파일과 같은 모양(전역 pax 머리글, 맨 앞 폴더, 긴 경로는 pax)으로 tar.gz를 만든다.
+function tarHeader(name, size, mode, type) {
+  const header = Buffer.alloc(512);
+  header.write(name, 0, 100, 'utf8');
+  header.write(mode.toString(8).padStart(7, '0'), 100); header.write('0000000', 108); header.write('0000000', 116);
+  header.write(size.toString(8).padStart(11, '0'), 124); header.write('00000000000', 136);
+  header.write('        ', 148); header.write(type, 156); header.write('ustar\0', 257); header.write('00', 263);
+  let sum = 0; for (const byte of header) sum += byte;
+  header.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148);
+  return header;
+}
+const padded = data => Buffer.concat([data, Buffer.alloc((512 - data.length % 512) % 512)]);
+function paxRecord(key, value) {
+  const record = `${key}=${value}\n`; let length = Buffer.byteLength(record) + 2;
+  while (String(length).length + 1 + Buffer.byteLength(record) !== length) length = String(length).length + 1 + Buffer.byteLength(record);
+  return Buffer.from(`${length} ${record}`);
+}
+function tarball(sha, files) {
+  const top = `jiwon-ilji-${sha.slice(0, 7)}`;
+  const comment = paxRecord('comment', sha);
+  const parts = [tarHeader('pax_global_header', comment.length, 0o666, 'g'), padded(comment), tarHeader(`${top}/`, 0, 0o755, '5')];
+  for (const [path, content, mode = 0o644] of files) {
+    const name = path.startsWith('../') ? path : `${top}/${path}`; const data = Buffer.from(content);
+    if (Buffer.byteLength(name) > 99) { const pax = paxRecord('path', name); parts.push(tarHeader('pax', pax.length, 0o644, 'x'), padded(pax)); }
+    parts.push(tarHeader(name.slice(0, 40), data.length, mode, '0'), padded(data));
+  }
+  return gzipSync(Buffer.concat([...parts, Buffer.alloc(1024)]));
+}
+function fakeGitHub() {
+  const revisions = {}; const calls = []; let latest = '';
+  return {
+    calls,
+    publish(sha, files) { revisions[sha] = tarball(sha, files); latest = sha; },
+    fetch: async url => {
+      calls.push(url);
+      if (url.includes('/commits/')) return new Response(latest);
+      return new Response(revisions[url.split('/').pop()]);
+    },
+  };
+}
+const sha = digit => digit.repeat(40);
+const longPath = '지원일지.app/Contents/Resources/아주-긴-한글-폴더-이름/아이콘-파일.txt';
+
+test('Git 없이 ZIP으로 받은 폴더도 압축 파일로 업데이트하고, 개인 기록과 직접 만든 파일은 그대로 둔다', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'jiwon-zip-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'data'));
+  await writeFile(join(dir, 'data', 'job-search.json'), '{"personal":"기록"}');
+  await writeFile(join(dir, 'server.mjs'), 'old');
+  await writeFile(join(dir, '내 메모.txt'), 'mine');
+  const github = fakeGitHub();
+  github.publish(sha('1'), [
+    ['server.mjs', 'version 1'], ['start.command', '#!/bin/sh', 0o755], [longPath, 'icon'], ['old.js', 'gone soon'],
+    ['data/job-search.json', '{"overwritten":true}'], ['../escape.txt', 'outside'], ['.git/config', 'nope'],
+  ]);
+  const update = createUpdater(dir, { fetch: github.fetch });
+  assert.deepEqual(await update(), { updated: true, revision: '11111111' });
+  assert.equal(await readFile(join(dir, 'server.mjs'), 'utf8'), 'version 1');
+  assert.equal(await readFile(join(dir, ...longPath.split('/')), 'utf8'), 'icon');
+  assert.equal(await readFile(join(dir, 'data', 'job-search.json'), 'utf8'), '{"personal":"기록"}');
+  assert.equal(await readFile(join(dir, '내 메모.txt'), 'utf8'), 'mine');
+  await assert.rejects(access(join(dir, '..', 'escape.txt')));
+  await assert.rejects(access(join(dir, '.git')));
+  if (process.platform !== 'win32') assert.equal((await stat(join(dir, 'start.command'))).mode & 0o111, 0o111);
+
+  const calls = github.calls.length;
+  assert.deepEqual(await update(), { updated: false, revision: '11111111' });
+  assert.equal(github.calls.length, calls + 1, '최신이면 압축 파일을 다시 받지 않는다');
+
+  github.publish(sha('2'), [['server.mjs', 'version 2'], ['start.command', '#!/bin/sh', 0o755], [longPath, 'icon']]);
+  assert.equal((await update()).updated, true);
+  assert.equal(await readFile(join(dir, 'server.mjs'), 'utf8'), 'version 2');
+  await assert.rejects(access(join(dir, 'old.js')), '새 버전에서 빠진 앱 파일은 지운다');
+  assert.equal(await readFile(join(dir, '내 메모.txt'), 'utf8'), 'mine');
+});
+
+test('압축 파일 업데이트는 인터넷 오류와 GitHub 요청 제한을 안내하고 파일을 건드리지 않는다', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'jiwon-zip-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(join(dir, 'server.mjs'), 'old');
+  const offline = createUpdater(dir, { fetch: async () => { throw new TypeError('fetch failed'); } });
+  await assert.rejects(offline(), error => error.status === 502 && /인터넷 연결/.test(error.message));
+  const limited = createUpdater(dir, { fetch: async () => new Response('', { status: 403 }) });
+  await assert.rejects(limited(), /몇 분 뒤/);
+  assert.equal(await readFile(join(dir, 'server.mjs'), 'utf8'), 'old');
+});
+
+test('Git으로 받은 폴더는 Git으로 업데이트한다', async t => {
+  const { author, friend } = await repository(t); await publish(author);
+  const result = await createUpdater(friend, { fetch: async () => { throw new Error('압축 파일을 받으면 안 된다'); } })();
+  assert.equal(result.updated, true);
+  assert.equal(await readFile(join(friend, 'app.txt'), 'utf8'), 'version 2');
 });

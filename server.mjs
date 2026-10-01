@@ -6,14 +6,14 @@ import { lookup } from 'node:dns/promises';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { privateAddress, decode, meta, jobPosting, decodedHtml, normalizedDate, normalizedTime, normalizedEmployment, cleanOrganization, pageTitleParts, roleFromTitle, jobAlioFields, textDeadline, pageText, parseEventFields } from './lib/parse.mjs';
-import { createGitUpdater } from './lib/update.mjs';
+import { createUpdater } from './lib/update.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dataPath = process.env.JOB_TRACKER_DATA_PATH ? resolve(process.env.JOB_TRACKER_DATA_PATH) : join(root, 'data', 'job-search.json');
 const settingsPath = join(dirname(dataPath), 'settings.json');
 const port = Number(process.env.PORT || 4173);
 const empty = { version: 1, postings: [], experiences: [], calendarEvents: [] };
-const pullUpdate = createGitUpdater(root);
+const pullUpdate = createUpdater(root);
 let updateTask = null;
 
 // Node.js가 너무 오래된 버전이면 알 수 없는 오류 대신 안내하고 끝낸다.
