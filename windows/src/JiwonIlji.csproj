@@ -1,0 +1,29 @@
+<!-- 윈도우 전용 창(맥의 지원일지.app과 같은 역할). 빌드는 GitHub Actions(windows-app.yml)가 하고,
+     만든 파일은 windows/app/에 올린다. .NET Framework 4.8은 윈도우 10·11에 기본으로 들어 있다. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>jiwon-ilji</AssemblyName>
+    <RootNamespace>JiwonIlji</RootNamespace>
+    <ApplicationIcon>..\..\assets\icon-transparent.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>지원일지</Product>
+    <AssemblyTitle>지원일지</AssemblyTitle>
+    <Description>지원일지</Description>
+    <Company>jiwon-ilji</Company>
+    <Copyright>jiwon-ilji</Copyright>
+    <Version>1.0.0</Version>
+    <SatelliteResourceLanguages>ko</SatelliteResourceLanguages>
+    <DebugType>none</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

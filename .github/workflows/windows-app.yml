@@ -1,0 +1,52 @@
+# 윈도우 전용 창(windows/src)을 실제 윈도우에서 빌드하고, 창을 띄워 앱 화면이 뜨는지·닫으면 서버도 꺼지는지 확인한다.
+# 만든 파일은 'windows-app' 결과물로 올린다(받아서 windows/app/에 넣고 커밋한다).
+name: windows-app
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/windows-app.yml'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 빌드
+        run: dotnet build windows/src/JiwonIlji.csproj -c Release -o windows/build
+      - name: 만든 파일
+        shell: pwsh
+        run: Get-ChildItem -Recurse windows/build | Select-Object FullName, Length | Format-Table -AutoSize
+      - name: 창을 띄워 확인
+        shell: pwsh
+        env:
+          PORT: '4192'
+          JIWON_BYE_MS: '500'
+        run: |
+          $env:JOB_TRACKER_DATA_PATH = Join-Path $env:RUNNER_TEMP 'data\job-search.json'
+          $result = Join-Path $env:RUNNER_TEMP 'smoke.json'
+          $app = Start-Process -FilePath (Resolve-Path 'windows/build/jiwon-ilji.exe') -ArgumentList "--smoke=$result" -PassThru
+          if (-not $app.WaitForExit(120000)) { $app.Kill(); throw '창이 2분 안에 끝나지 않았습니다' }
+          Get-Content (Join-Path $env:LOCALAPPDATA 'jiwon-ilji\server.log') -ErrorAction SilentlyContinue | Select-Object -Last 20
+          if (-not (Test-Path $result)) { throw "결과 파일이 없습니다(종료 코드 $($app.ExitCode))" }
+          $text = Get-Content -Raw -Encoding UTF8 $result
+          Write-Host $text
+          $smoke = $text | ConvertFrom-Json
+          if (-not $smoke.ok) { throw "앱 화면이 뜨지 않았습니다: $($smoke.error)" }
+          if ($smoke.nav -lt 5) { throw "메뉴가 다 보이지 않습니다: $($smoke.nav)" }
+          if (-not $smoke.windowTitle.Contains('지원일지')) { throw "창 제목이 다릅니다: $($smoke.windowTitle)" }
+          Start-Sleep -Seconds 3
+          $stillUp = $true
+          try { Invoke-WebRequest http://127.0.0.1:4192/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }
+          if ($stillUp) { throw '창을 닫았는데 서버가 꺼지지 않았습니다' }
+          Write-Host '창이 떴고, 닫자 서버도 꺼졌습니다'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: windows/build/

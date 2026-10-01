@@ -2,3 +2,6 @@ data/
 .DS_Store
 node_modules/
 .app-version.json
+windows/src/bin/
+windows/src/obj/
+windows/build/
