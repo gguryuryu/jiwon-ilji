@@ -50,9 +50,9 @@ jobs:
         shell: pwsh
         run: |
           # 전용 창이 없던 때처럼 Edge 실행기를 가리키는 예전 바로가기를 만든 뒤, 새 프로그램이 고치는지 본다.
-          Rename-Item windows/app windows/app-hidden
+          Rename-Item windows/app app-hidden
           powershell -NoProfile -ExecutionPolicy Bypass -File assets/make-shortcut.ps1
-          Rename-Item windows/app-hidden windows/app
+          Rename-Item windows/app-hidden app
           $link = Join-Path ([Environment]::GetFolderPath('Desktop')) '지원일지.lnk'
           $read = { $bytes = [IO.File]::ReadAllBytes($link); [Text.Encoding]::Unicode.GetString($bytes) + [Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1) }
           if (-not (& $read).Contains('launch-windows.vbs')) { throw '예전 바로가기를 만들지 못했습니다' }
