@@ -15,6 +15,7 @@ import { data, selectedId, setData, setRoute, view } from './state.js';
 import { persist, refreshFromServer, saveCurrentEditor, startFromServer } from './store.js';
 import { animateReorder, flushPending, reducedMotion, setSaveState, showToast } from './ui.js';
 import { autoGrow, dateKey, escapeHtml, formatDateLong, icon, todayKey, uid } from './util.js';
+import { setupUpdateButton } from './update.js';
 
 const sidebarToggle = $('#sidebar-toggle');
 const sidebar = $('#sidebar');
@@ -289,6 +290,7 @@ try {
   const response = await fetch('/api/data'); if (!response.ok) throw new Error('저장 파일을 열지 못했습니다.');
   const loaded = await response.json();
   startFromServer(loaded);
+  setupUpdateButton();
   // 새로고침하거나 주소로 바로 열어도 보던 화면이 그대로 열린다.
   const route = routeFrom(location.hash);
   setRoute(route.view, route.id);

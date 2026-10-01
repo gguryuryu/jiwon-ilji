@@ -20,22 +20,49 @@ export function runsThisWeek(block, today) {
 // while 돌리기: 시작 시각만 적어 두고(앱을 껐다 켜도 이어서 돈다), break 때 걸린 분을 기록한다.
 export function startLoop(block, now = new Date()) {
   if (block.kind !== 'while' || block.runningSince) return;
-  block.runningSince = now.toISOString();
+  block.runningSince = now.toISOString(); block.pausedAt = ''; block.pausedMs = 0;
 }
+
+// 실제로 돈 시간(초): 시작부터 지금(멈춰 있으면 멈춘 순간)까지에서 멈춰 있던 시간을 뺀다.
+export function activeSeconds(block, now = new Date()) {
+  if (!block.runningSince) return 0;
+  const end = block.pausedAt ? new Date(block.pausedAt) : now;
+  return Math.max(0, (end - new Date(block.runningSince) - (block.pausedMs || 0)) / 1000);
+}
+
+// pause: 멈춘 동안은 시간이 흐르지 않는다(뽀모도로도 그 자리에서 멈춘다). resume으로 이어서 돈다.
+export function pauseLoop(block, now = new Date()) {
+  if (!block.runningSince || block.pausedAt) return false;
+  block.pausedAt = now.toISOString(); return true;
+}
+
+export function resumeLoop(block, now = new Date()) {
+  if (!block.runningSince || !block.pausedAt) return false;
+  block.pausedMs = (block.pausedMs || 0) + (now - new Date(block.pausedAt)); block.pausedAt = ''; return true;
+}
+
+// done: 블록을 편집기에서 치우고 기록(OUTPUT)만 남긴다. 돌고 있었으면 먼저 멈춰 기록한다.
+export function finishBlock(block, now = new Date()) {
+  const run = block.runningSince ? breakLoop(block, now) : null;
+  block.doneAt = now.toISOString();
+  return run;
+}
+
+export const liveBlocks = state => (state.labBlocks || []).filter(block => !block.doneAt);
 
 export function breakLoop(block, now = new Date()) {
   if (!block.runningSince) return null;
-  const started = new Date(block.runningSince);
-  const minutes = Math.max(0, Math.round((now - started) / 60_000));
-  // 뽀모도로라면 끝낸 라운드 수와 실제 집중한 분만 남긴다(휴식 시간은 빼고).
+  const started = new Date(block.runningSince); const active = activeSeconds(block, now);
+  const minutes = Math.max(0, Math.round(active / 60));
+  // 뽀모도로라면 끝낸 라운드 수와 실제 집중한 분만 남긴다(휴식·멈춘 시간은 빼고).
   const plan = parsePomodoro(block.cond);
-  const state = plan && pomodoroState(plan, (now - started) / 1000);
+  const state = plan && pomodoroState(plan, active);
   const rounds = state ? state.round - (state.phase === 'focus' ? 1 : 0) : undefined;
   const focusMinutes = !state ? minutes : state.done ? plan.rounds * plan.focus
     : Math.round(state.phase === 'focus' ? (state.round - 1) * plan.focus + (state.phaseLength - state.left) / 60 : state.round * plan.focus);
   const run = { date: dateKey(started), at: block.runningSince, endedAt: now.toISOString(), minutes: Math.max(0, focusMinutes), ...(plan ? { rounds } : {}) };
   block.runs = [...(block.runs || []), run];
-  block.runningSince = '';
+  block.runningSince = ''; block.pausedAt = ''; block.pausedMs = 0;
   return run;
 }
 
@@ -94,10 +121,10 @@ export function pomodoroState(plan, elapsedSeconds) {
 export function finishPomodoro(block, plan) {
   if (!block.runningSince) return null;
   const started = new Date(block.runningSince);
-  const ended = new Date(started.getTime() + pomodoroState(plan, 0).total * 1000);
+  const ended = new Date(started.getTime() + pomodoroState(plan, 0).total * 1000 + (block.pausedMs || 0));
   const run = { date: dateKey(started), at: block.runningSince, endedAt: ended.toISOString(), minutes: plan.rounds * plan.focus, rounds: plan.rounds, completed: true };
   block.runs = [...(block.runs || []), run];
-  block.runningSince = '';
+  block.runningSince = ''; block.pausedAt = ''; block.pausedMs = 0;
   return run;
 }
 

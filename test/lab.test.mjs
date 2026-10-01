@@ -110,3 +110,22 @@ test('블록을 공부 기록 루틴·목표 할 일에 이으면 이름이 코�
   assert.equal(linkTarget(state, taskLink), null); // 할 일을 지우면 연결이 끊긴 것으로 본다
   assert.equal(completeLink(state, taskLink, '2026-10-01'), null);
 });
+
+test('pause한 동안은 시간이 흐르지 않고, done하면 블록은 치우되 기록은 남는다', async () => {
+  const { activeSeconds, finishBlock, liveBlocks, pauseLoop, resumeLoop } = await import('../js/lab-model.js');
+  const t = minutes => new Date(2026, 9, 1, 9, minutes);
+  const block = Object.assign(newLabBlock('while'), { cond: '4' });
+  startLoop(block, t(0));
+  pauseLoop(block, t(10));
+  assert.equal(activeSeconds(block, t(30)), 600); // 멈춘 20분은 세지 않는다
+  resumeLoop(block, t(30));
+  assert.equal(activeSeconds(block, t(40)), 1200);
+  const run = breakLoop(block, t(40));
+  assert.deepEqual([run.minutes, run.rounds], [20, 0]); // 첫 라운드 20분째에 멈춤
+  startLoop(block, t(50));
+  const state = { labBlocks: [block, newLabBlock('if')] };
+  const last = finishBlock(block, t(55));
+  assert.equal(last.minutes, 5);
+  assert.equal(block.runs.length, 2); // 기록은 그대로
+  assert.equal(liveBlocks(state).length, 1); // 편집기에서는 빠진다
+});

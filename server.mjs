@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { userInfo } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { privateAddress, decode, meta, jobPosting, decodedHtml, normalizedDate, normalizedTime, normalizedEmployment, cleanOrganization, pageTitleParts, roleFromTitle, jobAlioFields, textDeadline, pageText, parseEventFields } from './lib/parse.mjs';
+import { createGitUpdater } from './lib/update.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dataPath = process.env.JOB_TRACKER_DATA_PATH ? resolve(process.env.JOB_TRACKER_DATA_PATH) : join(root, 'data', 'job-search.json');
@@ -15,6 +16,8 @@ const settingsPath = join(dirname(dataPath), 'settings.json');
 const port = Number(process.env.PORT || 4173);
 const empty = { version: 1, postings: [], experiences: [], calendarEvents: [] };
 const execFileAsync = promisify(execFile);
+const pullUpdate = createGitUpdater(root);
+let updateTask = null;
 
 // Node.js가 너무 오래된 버전이면 알 수 없는 오류 대신 안내하고 끝낸다.
 if (Number(process.versions.node.split('.')[0]) < 22) {
@@ -297,6 +300,7 @@ let lastSeen = Date.now();
 
 async function shutdown() {
   await writeChain.catch(() => {});
+  await updateTask?.catch(() => {});
   server.close();
   process.exit(0);
 }
@@ -326,6 +330,14 @@ const server = http.createServer(async (request, response) => {
   try {
     if (!/^(?:127\.0\.0\.1|localhost)(?::\d+)?$/i.test(request.headers.host || '')) return sendJson(response, 403, { error: '허용되지 않은 요청입니다.' });
     const url = new URL(request.url, 'http://127.0.0.1');
+    if (url.pathname === '/api/update' && request.method === 'POST') {
+      if (request.headers['x-jiwon-ilji'] !== '1' || (request.headers.origin && request.headers.origin !== `http://${request.headers.host}`)) return sendJson(response, 403, { error: '허용되지 않은 요청입니다.' });
+      if (updateTask) return sendJson(response, 409, { error: '이미 업데이트 중이에요. 잠시 기다려 주세요.' });
+      updateTask = pullUpdate();
+      try { return sendJson(response, 200, await updateTask); }
+      catch (error) { return sendJson(response, error.status || 500, { error: error.status ? error.message : '업데이트하지 못했어요. 잠시 후 다시 눌러 주세요.' }); }
+      finally { updateTask = null; }
+    }
     if (url.pathname === '/api/data' && request.method === 'GET') return sendJson(response, 200, await loadData());
     if (url.pathname === '/api/ping' && request.method === 'POST') return presence(request, response, 'ping');
     if (url.pathname === '/api/bye' && request.method === 'POST') return presence(request, response, 'bye');

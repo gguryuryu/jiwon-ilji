@@ -5,12 +5,13 @@ import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
 import { showToast } from './ui.js';
 import { escapeHtml as esc, todayKey } from './util.js';
-import { breakLoop, clock, completeLink, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
+import { activeSeconds, breakLoop, clock, finishBlock, liveBlocks, pauseLoop, resumeLoop, completeLink, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
 
 const blockById = id => data.labBlocks.find(block => block.id === id);
 const bodyLabel = block => { const call = block.link && linkCall(data, block.link); return call ? `${call.ns}.${call.name}()` : block.body || '…'; };
 const hhmm = iso => { const date = new Date(iso); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
-const elapsedSeconds = block => (Date.now() - new Date(block.runningSince)) / 1000;
+const elapsedSeconds = block => activeSeconds(block); // 멈춰 있던 시간은 뺀다
+const hms = seconds => { const t = Math.floor(seconds); const h = Math.floor(t / 3600); const m = Math.floor(t % 3600 / 60); const pad = v => String(v).padStart(2, '0'); return h ? `${h}:${pad(m)}:${pad(t % 60)}` : `${m}:${pad(t % 60)}`; };
 let freshId = ''; // 방금 실행한 블록: 주석·출력 줄이 타자 치듯 나타난다
 
 // 칸 너비를 글자에 맞춰 늘린다(보이지 않는 글자 복사본이 칸 크기를 정한다).
@@ -51,7 +52,7 @@ function progressHtml(block) {
     return `<span class="lab-indent"></span><span class="lab-ascii ${state.phase}" data-ascii>${asciiBar(ratio)}</span><span class="lab-pct" data-pct>${Math.floor(ratio * 100)}%</span><span class="lab-phase ${state.phase}" data-phase="${state.phase}">${state.phase === 'rest' ? 'rest()' : 'focus()'}</span><span class="lab-left" data-left>${clock(state.left)}</span><span class="lab-round">round ${state.round}/${plan.rounds}</span>`;
   }
   const seconds = elapsedSeconds(block);
-  return `<span class="lab-indent"></span><span class="lab-ascii loop" data-loop>${loopBar(seconds)}</span><span class="lab-iter">i = <b data-iter>${Math.floor(seconds / 60)}</b></span><span class="lab-left" data-elapsed>${elapsedLabel(block.runningSince)}</span>`;
+  return `<span class="lab-indent"></span><span class="lab-ascii loop" data-loop>${loopBar(seconds)}</span><span class="lab-iter">i = <b data-iter>${Math.floor(seconds / 60)}</b></span><span class="lab-left" data-elapsed>${hms(elapsedSeconds(block))}</span>`;
 }
 
 // 도는 블록 오른쪽 타이머: 남은 분만큼 은은한 부채꼴, 가장자리만 진한 선, 가운데 큰 숫자(Time Timer를 참고).
@@ -68,12 +69,17 @@ function arcPaths(minutes) {
 }
 
 function dialState(block) {
+  const dial = dialStateRaw(block);
+  return block.pausedAt ? { ...dial, label: 'paused', phaseText: `일시정지 · ${dial.phaseText}` } : dial;
+}
+
+function dialStateRaw(block) {
   const plan = parsePomodoro(block.cond); const seconds = elapsedSeconds(block);
   if (plan) {
     const state = pomodoroState(plan, seconds);
     return { minutes: state.left / 60, time: clock(state.left), label: state.phase === 'rest' ? 'rest' : 'focus', phaseText: `${state.phase === 'rest' ? '휴식' : '집중'} · round ${state.round}/${plan.rounds}`, tone: state.phase === 'rest' ? 'rest' : 'focus' };
   }
-  return { minutes: (seconds / 60) % 60, time: elapsedLabel(block.runningSince), label: 'loop', phaseText: `반복 i = ${Math.floor(seconds / 60)}`, tone: 'loop' };
+  return { minutes: (seconds / 60) % 60, time: hms(elapsedSeconds(block)), label: 'loop', phaseText: `반복 i = ${Math.floor(seconds / 60)}`, tone: 'loop' };
 }
 
 function dialHtml(block) {
@@ -133,16 +139,17 @@ document.addEventListener('pointerdown', () => { keyboardUsed = false; }, true);
 function blockHtml(block, startLine, today) {
   const running = Boolean(block.runningSince); const plan = block.kind === 'while' ? parsePomodoro(block.cond) : null;
   const comment = running ? '' : commentFor(block, today);
+  const paused = Boolean(block.pausedAt);
   const control = block.kind === 'while'
-    ? running ? `<button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button>`
+    ? running ? `<button type="button" class="lab-run lab-pause" data-lab="${paused ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${paused ? '▶ resume' : '❚❚ pause'}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button>`
       : `<button type="button" class="lab-run" data-lab="start" data-id="${esc(block.id)}">▶ run</button>`
     : `<button type="button" class="lab-run" data-lab="run-if" data-id="${esc(block.id)}">▶ run</button>`;
   let number = startLine;
   const first = number;
   const line = (content, extra = '') => `<div class="lab-line${extra}"><span class="lab-gutter" aria-hidden="true">${number === first ? gutterMark(block, today) : ''}</span><span class="lab-no" aria-hidden="true">${number++}</span><div class="lab-code">${content}</div></div>`;
   const placeholder = block.kind === 'while' ? '지하철 타는 동안' : '밥 먹고 나면';
-  const html = [`<section class="lab-block${running ? ' running' : ''}${plan ? ' pomodoro' : ''}${block.id === freshId ? ' fresh' : ''}" data-kind="${block.kind}" data-id="${esc(block.id)}" aria-label="${block.kind} 블록"><div class="lab-block-lines">`,
-    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${hintFor(plan)}<span class="lab-controls"><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
+  const html = [`<section class="lab-block${running ? ' running' : ''}${block.pausedAt ? ' paused' : ''}${plan ? ' pomodoro' : ''}${block.id === freshId ? ' fresh' : ''}" data-kind="${block.kind}" data-id="${esc(block.id)}" aria-label="${block.kind} 블록"><div class="lab-block-lines">`,
+    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${hintFor(plan)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">✓ done</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
     line(`<span class="lab-indent"></span>${bodyHtml(block, today)}`, ' lab-body-line'),
     running ? line(progressHtml(block), ' lab-progress') : '',
     comment ? line(`<span class="lab-indent"></span><span class="lab-comment">${esc(comment)}</span>`) : '',
@@ -155,7 +162,7 @@ function blockHtml(block, startLine, today) {
 // 여러 개가 돌면 작은 탭으로 고른다. 고른 게 없거나 멈췄으면 가장 먼저 시작한 것을 보여 준다.
 let nowId = '';
 function nowBlock() {
-  const running = data.labBlocks.filter(block => block.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
+  const running = liveBlocks(data).filter(block => block.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
   return running.find(block => block.id === nowId) || running[0] || null;
 }
 
@@ -176,17 +183,17 @@ function idleHtml() {
 
 function nowHtml() {
   const block = nowBlock(); if (!block) return idleHtml();
-  const running = data.labBlocks.filter(item => item.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
+  const running = liveBlocks(data).filter(item => item.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
   const dial = dialState(block); const plan = parsePomodoro(block.cond);
   const tabs = running.length > 1 ? `<div class="lab-now-tabs" role="tablist" aria-label="실행 중인 while">${running.map(item => `<button type="button" role="tab" class="lab-now-tab${item === block ? ' active' : ''}" aria-selected="${item === block}" data-lab="show-now" data-id="${esc(item.id)}"><span class="lab-kw">while</span> ${esc(item.cond || '…')}:</button>`).join('')}</div>` : '';
   const detail = plan ? `${plan.focus}분 집중 × ${plan.rounds}${plan.rounds > 1 ? ` · 휴식 ${plan.rest}분` : ''}` : 'break할 때까지 도는 중';
-  return `<section class="lab-now ${dial.tone}" data-now="${esc(block.id)}" aria-label="지금 실행 중">
+  return `<section class="lab-now ${dial.tone}${block.pausedAt ? ' paused' : ''}" data-now="${esc(block.id)}" aria-label="지금 실행 중">
     ${dialHtml(block)}
     <div class="lab-now-info">
       ${tabs}
       <div class="lab-now-code"><span class="lab-kw">while</span> <span class="lab-cond${plan ? ' lab-num' : ''}">${esc(block.cond || '…')}</span><span class="lab-punct">:</span> <span class="lab-now-body">${esc(bodyLabel(block))}</span></div>
       <div class="lab-now-state"><span class="lab-now-phase" data-now-phase>${dial.phaseText}</span><span class="lab-now-detail">${detail}</span></div>
-      <div class="lab-now-actions"><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button><span class="lab-now-since">${hhmm(block.runningSince)}부터</span></div>
+      <div class="lab-now-actions"><button type="button" class="lab-run lab-pause" data-lab="${block.pausedAt ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${block.pausedAt ? '▶ resume' : '❚❚ pause'}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button><span class="lab-now-since">${hhmm(block.runningSince)}부터</span></div>
     </div>
   </section>`;
 }
@@ -199,11 +206,11 @@ function crumbsHtml() {
 
 // 상태 막대: 실행 표시만 강조하고 시간·오늘 실행 수는 작은 요약으로 둔다.
 function statusHtml(today) {
-  const running = data.labBlocks.filter(block => block.runningSince);
+  const running = liveBlocks(data).filter(block => block.runningSince);
   const ran = data.labBlocks.reduce((sum, block) => sum + runsOn(block, today).length, 0);
   const first = running[0]; const plan = first && parsePomodoro(first.cond);
   const state = plan && pomodoroState(plan, elapsedSeconds(first));
-  const now = !first ? '' : state ? `pomo ${state.round}/${plan.rounds} · ${state.phase === 'rest' ? 'break' : 'focus'} ${clock(state.left)}` : `loop ${elapsedLabel(first.runningSince)}`;
+  const now = !first ? '' : state ? `pomo ${state.round}/${plan.rounds} · ${state.phase === 'rest' ? 'break' : 'focus'} ${clock(state.left)}` : `loop ${hms(elapsedSeconds(first))}`;
   return `<span>⎇ main</span><span class="lab-status-state">${running.length ? `● ${running.length} running` : '○ idle'}</span>${now ? `<span class="lab-status-now">${now}</span>` : ''}<span class="lab-status-right">오늘 실행 ${ran} · UTF-8 · Python 3.12</span>`;
 }
 
@@ -212,6 +219,7 @@ function outputHtml(today) {
   const events = [];
   for (const block of data.labBlocks) {
     const cond = esc(block.cond || '…');
+    if (block.doneAt && runsOn({ runs: [{ at: block.doneAt }] }, today).length) events.push({ at: block.doneAt, block, html: `<span class="lab-kw">${block.kind}</span> ${cond}: done <span class="lab-ok">✓</span> <span class="lab-out-dim">블록을 치웠어요</span>` });
     for (const run of runsOn(block, today)) {
       if (block.kind === 'if') events.push({ at: run.at, block, html: `<span class="lab-kw">if</span> ${cond}: ${esc(bodyLabel(block))} <span class="lab-ok">✓</span>` });
       else {
@@ -236,12 +244,12 @@ export function renderLab() {
   const today = todayKey();
   let lineNumber = 1;
   const header = `<div class="lab-line lab-meta"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span><div class="lab-code"><span class="lab-comment"># while 4: → 25분 × 4 뽀모도로</span></div></div>`;
-  const blocks = data.labBlocks.map(block => {
+  const blocks = liveBlocks(data).map(block => {
     const gap = `<div class="lab-line lab-gap"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span></div>`;
     const { html, lines } = blockHtml(block, lineNumber, today);
     lineNumber += lines; return gap + html;
   }).join('');
-  const runningCount = data.labBlocks.filter(block => block.runningSince).length;
+  const runningCount = liveBlocks(data).filter(block => block.runningSince).length;
   main.className = 'database-page lab-page';
   main.innerHTML = `<header class="page-header"><h1 class="page-title">실험실<span class="title-beta">Beta</span></h1></header>
     <div class="lab-editor">
@@ -302,6 +310,16 @@ main.addEventListener('click', event => {
   }
   if (!block) return;
   if (action === 'show-now') { nowId = block.id; keepScroll(renderLab); return; }
+  if (action === 'pause') { pauseLoop(block); persist(); keepScroll(renderLab); showToast('일시정지 · 멈춘 동안은 시간이 흐르지 않아요'); return; }
+  if (action === 'resume') { resumeLoop(block); persist(); keepScroll(renderLab); return; }
+  if (action === 'done') {
+    // 다 했어요: 블록을 치우고 기록만 남긴다. 연결한 루틴·할 일이 남아 있으면 같이 체크할지 알림에서 고른다.
+    const run = finishBlock(block); persist(); keepScroll(renderLab);
+    const target = linkTarget(data, block.link); const date = run?.date || todayKey();
+    const check = target && !linkDone(data, block.link, date) ? [{ label: target.kind === 'routine' ? '공부 기록에 체크' : '할 일 체크', run: () => { const undo = completeLink(data, block.link, date); persist(); keepScroll(renderLab); if (undo) showToast(target.kind === 'routine' ? '공부 기록에도 체크했어요' : '목표 할 일을 체크했어요', { label: '되돌리기', run: () => { undo(); persist(); keepScroll(renderLab); } }); } }] : [];
+    showToast(`${block.kind} ${block.cond || '…'}: done · 기록은 OUTPUT에 남겨요`, [...check, { label: '되돌리기', run: () => { block.doneAt = ''; if (run) { block.runs = block.runs.filter(item => item !== run); block.runningSince = run.at; } persist(); keepScroll(renderLab); } }]);
+    return;
+  }
   if (action === 'link') {
     const code = button.closest('.lab-code'); const open = code.querySelector('.lab-link-menu'); closeLinkMenu(); if (open) return;
     code.insertAdjacentHTML('beforeend', linkMenuHtml(block)); code.classList.add('menu-open');
@@ -362,7 +380,7 @@ function chime(times = 2) {
 }
 
 function tick() {
-  const running = data.labBlocks.filter(block => block.runningSince);
+  const running = liveBlocks(data).filter(block => block.runningSince);
   if (!running.length) { document.title = baseTitle; clearInterval(timer); timer = 0; return; }
   let title = '';
   for (const block of running) {
@@ -389,14 +407,14 @@ function tick() {
         element.querySelector('[data-left]').textContent = clock(state.left);
         element.querySelector('[data-pct]').textContent = `${Math.floor(ratio * 100)}%`;
       }
-      title ||= `${clock(state.left)} ${state.phase === 'rest' ? '휴식' : '집중'}`;
+      title ||= `${block.pausedAt ? '❚❚ ' : ''}${clock(state.left)} ${block.pausedAt ? '일시정지' : state.phase === 'rest' ? '휴식' : '집중'}`;
     } else {
       if (element) {
         element.querySelector('[data-iter]').textContent = Math.floor(elapsedSeconds(block) / 60);
         element.querySelector('[data-loop]').innerHTML = loopBar(elapsedSeconds(block));
-        element.querySelector('[data-elapsed]').textContent = elapsedLabel(block.runningSince);
+        element.querySelector('[data-elapsed]').textContent = hms(elapsedSeconds(block));
       }
-      title ||= `↻ ${elapsedLabel(block.runningSince)}`;
+      title ||= `${block.pausedAt ? '❚❚' : '↻'} ${hms(elapsedSeconds(block))}`;
     }
   }
   if (view === 'lab') {

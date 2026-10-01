@@ -65,6 +65,12 @@ test('서버: 화면 파일, 저장 충돌, 경로·호스트 차단, 중복 실
     assert.equal((await request('/api/data', { host: 'evil.example' })).status, 403);
   });
 
+  await t.test('업데이트는 앱의 POST 요청만 허용하고 다른 사이트의 요청은 차단한다', async () => {
+    assert.equal((await request('/api/update')).status, 404);
+    assert.equal((await request('/api/update', { method: 'POST' })).status, 403);
+    assert.equal((await request('/api/update', { method: 'POST', headers: { 'x-jiwon-ilji': '1', origin: 'https://evil.example' } })).status, 403);
+  });
+
   await t.test('판 번호가 맞을 때만 저장하고, 어긋나면 409와 최신 데이터를 준다', async () => {
     const empty = JSON.parse((await request('/api/data')).text);
     assert.deepEqual(empty.postings, []);

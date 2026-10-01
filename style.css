@@ -216,6 +216,10 @@ textarea:focus-visible {
   font-size: 13px;
 }
 
+.side-action:disabled { opacity: .55; cursor: wait; }
+.update-state { padding: 4px 10px 6px; color: var(--text-3); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.update-state.error { color: var(--danger); }
+
 #save-state {
   padding: 8px 10px 2px;
   font-size: 12px;
@@ -5460,6 +5464,14 @@ button.grass-cell:hover {
 
 .lab-block-lines { min-width: 0; }
 
+/* 일시정지: 흐르는 빛을 멈추고 실행 줄 색을 한 단계 낮춘다 */
+.lab-block.paused { background: color-mix(in srgb, var(--lab-live) 3%, transparent); }
+.lab-block.paused::before { animation: none; opacity: .45; }
+.lab-now.paused .lab-dial-edge, .lab-now.paused .lab-dial-wedge { opacity: .45; }
+.lab-pause { color: var(--text-2); }
+.lab-done-btn:hover { color: var(--lab-done); }
+.lab-out-dim { color: var(--text-3); }
+
 /* 진행 줄: [████░░░░] 36%  focus()  round 2/4 — 막대는 보조, 빈칸은 아주 흐리게 */
 .lab-progress .lab-code {
   flex-wrap: nowrap;
@@ -5831,6 +5843,7 @@ button.grass-cell:hover {
   .side-action {
     width: auto;
   }
+  .update-state { max-width: 200px; flex: none; }
   #save-state {
     display: none;
   }

@@ -116,6 +116,18 @@ export function saveNow() {
   clearTimeout(editorTimer); pendingSave = false; persist();
 }
 
+// 업데이트 직전에는 재시도 예약뿐 아니라 실제 저장 완료까지 확인한다.
+export async function saveBeforeUpdate() {
+  saveCurrentEditor();
+  persist();
+  for (;;) {
+    const pending = saveQueue;
+    await pending;
+    if (pending === saveQueue && !saveWaiting) break;
+  }
+  if (saveRetries) throw new Error('작성한 내용을 아직 저장하지 못했어요. 저장이 완료된 뒤 업데이트를 다시 눌러 주세요.');
+}
+
 export function scheduleSave() {
   pendingSave = true;
   clearTimeout(editorTimer);
