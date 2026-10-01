@@ -64,15 +64,42 @@ test('갈라진 커밋은 자동 병합하지 않는다', async t => {
   await writeFile(join(friend, 'local.txt'), 'local');
   await git(friend, 'add', '.'); await git(friend, 'commit', '-m', 'local commit');
   const head = await git(friend, 'rev-parse', 'HEAD'); await publish(author);
-  await assert.rejects(createGitUpdater(friend)(), /변경 이력이 달라/);
+  await assert.rejects(createGitUpdater(friend)(), /만든 커밋이 있어서/);
   assert.equal(await git(friend, 'rev-parse', 'HEAD'), head);
 });
 
-test('Git 폴더·연결 브랜치가 없으면 이해할 수 있는 안내를 내준다', async t => {
+test('Git 폴더가 아니거나 기본 브랜치에 없는 커밋이면 이해할 수 있는 안내를 내준다', async t => {
   const { dir, friend } = await repository(t);
   await assert.rejects(createGitUpdater(dir)(), /Git으로 받은 앱 폴더가 아니/);
-  await git(friend, 'checkout', '--detach');
-  await assert.rejects(createGitUpdater(friend)(), /브랜치가 연결되어 있지/);
+  await git(friend, 'config', 'user.name', 'Friend'); await git(friend, 'config', 'user.email', 'friend@example.invalid');
+  await git(friend, 'config', 'commit.gpgsign', 'false');
+  await git(friend, 'checkout', '-b', 'local-only');
+  await git(friend, 'commit', '--allow-empty', '-m', 'local only');
+  const head = await git(friend, 'rev-parse', 'HEAD');
+  await assert.rejects(createGitUpdater(friend)(), /main 브랜치로 바꾼 뒤/);
+  assert.equal(await git(friend, 'rev-parse', 'HEAD'), head);
+});
+
+test('PR 브랜치가 합쳐진 뒤 GitHub에서 지워졌으면 main으로 옮겨서 업데이트한다', async t => {
+  const { author, friend } = await repository(t);
+  await git(friend, 'config', 'user.name', 'Friend'); await git(friend, 'config', 'user.email', 'friend@example.invalid');
+  await git(friend, 'config', 'commit.gpgsign', 'false');
+  await git(friend, 'checkout', '-b', 'fix/icon');
+  await writeFile(join(friend, 'icon.txt'), 'icon'); await git(friend, 'add', '.'); await git(friend, 'commit', '-m', 'icon');
+  await git(friend, 'push', '-u', 'origin', 'fix/icon');
+  await git(author, 'pull', 'origin', 'fix/icon', '--no-rebase', '--no-edit'); await git(author, 'push');
+  await git(author, 'push', 'origin', '--delete', 'fix/icon');
+  await publish(author);
+  const result = await createGitUpdater(friend)();
+  assert.equal(result.updated, true);
+  assert.equal(await git(friend, 'branch', '--show-current'), 'main');
+  assert.equal(await readFile(join(friend, 'app.txt'), 'utf8'), 'version 2');
+});
+
+test('알 수 없는 Git 오류는 Git 메시지를 함께 보여 준다', async t => {
+  const { friend } = await repository(t);
+  await git(friend, 'remote', 'set-url', 'origin', join(friend, 'missing.git'));
+  await assert.rejects(createGitUpdater(friend)(), /Git 메시지: .+/);
 });
 
 test('두 창의 동시 업데이트는 한 번만 진행한다', async t => {
