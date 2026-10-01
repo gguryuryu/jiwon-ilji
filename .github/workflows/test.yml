@@ -36,13 +36,14 @@ jobs:
             $link = Join-Path $folder '지원일지.lnk'
             if (-not (Test-Path -LiteralPath $link)) { throw "바로가기가 없습니다: $link" }
           }
-          # 바로가기 안에 저장된 실행기 경로를 유니코드로 읽어, 한글 경로가 그대로인지 확인한다.
+          # 바로가기 안에 저장된 전용 창 경로를 유니코드로 읽어, 한글 경로가 그대로인지 확인한다.
           $bytes = [IO.File]::ReadAllBytes((Join-Path ([Environment]::GetFolderPath('Desktop')) '지원일지.lnk'))
           $text = [Text.Encoding]::Unicode.GetString($bytes) + [Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1)
+          $exe = Join-Path $korean 'windows\app\jiwon-ilji.exe'
+          if (-not $text.Contains($exe)) { throw "바로가기 안의 경로가 깨졌습니다(기대: $exe)" }
+          Write-Host "바로가기 경로 확인: $exe"
+          # 예전 바로가기가 쓰던 실행기(Edge 앱 창)도 계속 동작하는지 확인한다.
           $vbs = Join-Path $korean 'assets\launch-windows.vbs'
-          if (-not $text.Contains($vbs)) { throw "바로가기 안의 경로가 깨졌습니다(기대: $vbs)" }
-          Write-Host "바로가기 경로 확인: $vbs"
-          if (-not (Test-Path -LiteralPath $vbs)) { throw "바로가기가 가리키는 실행기가 없습니다(한글 경로가 깨졌을 수 있음): $vbs" }
           cscript //nologo $vbs
           if ($LASTEXITCODE -ne 0) { throw '실행기가 서버를 켜지 못했습니다' }
           $page = Invoke-WebRequest http://127.0.0.1:4190/js/main.js -UseBasicParsing
@@ -55,6 +56,29 @@ jobs:
           try { Invoke-WebRequest http://127.0.0.1:4190/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }
           if ($stillUp) { throw '앱 창을 닫았는데 서버가 꺼지지 않았습니다' }
           Write-Host '창을 닫자 서버가 꺼졌습니다'
+      # 저장소에 든 윈도우 전용 창(windows/app)을 한글 폴더에서 실제로 띄워 보고, 닫으면 서버도 꺼지는지 확인한다.
+      - name: 윈도우 전용 창 실행 확인
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          PORT: '4193'
+          JIWON_BYE_MS: '500'
+        run: |
+          $korean = Join-Path $env:RUNNER_TEMP '한글 폴더\지원일지'
+          $env:JOB_TRACKER_DATA_PATH = Join-Path $env:RUNNER_TEMP 'window-data\job-search.json'
+          $result = Join-Path $env:RUNNER_TEMP 'window-smoke.json'
+          $app = Start-Process -FilePath (Join-Path $korean 'windows\app\jiwon-ilji.exe') -ArgumentList "--smoke=$result" -PassThru
+          if (-not $app.WaitForExit(120000)) { $app.Kill(); throw '창이 2분 안에 끝나지 않았습니다' }
+          if (-not (Test-Path $result)) { throw "결과 파일이 없습니다(종료 코드 $($app.ExitCode))" }
+          $text = Get-Content -Raw -Encoding UTF8 $result
+          Write-Host $text
+          $smoke = $text | ConvertFrom-Json
+          if (-not $smoke.ok -or $smoke.nav -lt 5) { throw "앱 화면이 뜨지 않았습니다: $text" }
+          Start-Sleep -Seconds 3
+          $stillUp = $true
+          try { Invoke-WebRequest http://127.0.0.1:4193/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }
+          if ($stillUp) { throw '창을 닫았는데 서버가 꺼지지 않았습니다' }
+          Write-Host '전용 창이 떴고, 닫자 서버도 꺼졌습니다'
       # 맥 네이티브 앱: 소스가 컴파일되는지, 저장소에 든 앱이 다른 맥에서도 서버를 켜고 끄는지 확인한다.
       - name: 맥 앱 컴파일 · 실행 확인
         if: runner.os == 'macOS'

@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, writeFile, rm, stat, access } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, writeFile, rm, stat, access } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createGitUpdater, createUpdater, desktopGitCandidates } from '../lib/update.mjs';
+import { createGitUpdater, createUpdater, desktopGitCandidates, removeOldCopies, unlockRunningFiles } from '../lib/update.mjs';
 
 const exec = promisify(execFile);
 const git = async (cwd, ...args) => (await exec('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }, windowsHide: true })).stdout.trim();
@@ -211,4 +211,22 @@ test('Git으로 받은 폴더는 Git으로 업데이트한다', async t => {
   const result = await createUpdater(friend, { fetch: async () => { throw new Error('압축 파일을 받으면 안 된다'); } })();
   assert.equal(result.updated, true);
   assert.equal(await readFile(join(friend, 'app.txt'), 'utf8'), 'version 2');
+});
+
+test('윈도우에서 켜져 있는 전용 창 파일은 비켜 두고 같은 사본을 남겨, 업데이트가 덮어쓸 수 있게 한다', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'jiwon-running-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await mkdir(join(dir, 'windows', 'app'), { recursive: true });
+  await writeFile(join(dir, 'windows', 'app', 'jiwon-ilji.exe'), 'old exe');
+  await writeFile(join(dir, 'server.mjs'), 'server');
+  await unlockRunningFiles(dir, ['windows/app/jiwon-ilji.exe', 'server.mjs', 'windows/app/없는.dll'], 'darwin');
+  assert.deepEqual((await readdir(join(dir, 'windows', 'app'))).length, 1); // 윈도우가 아니면 건드리지 않는다
+  await unlockRunningFiles(dir, ['windows/app/jiwon-ilji.exe', 'server.mjs', 'windows/app/없는.dll'], 'win32');
+  const names = await readdir(join(dir, 'windows', 'app'));
+  assert.equal(names.length, 2);
+  assert.equal(await readFile(join(dir, 'windows', 'app', 'jiwon-ilji.exe'), 'utf8'), 'old exe');
+  assert.ok(names.some(name => /^jiwon-ilji\.exe\.old-\d+$/.test(name)));
+  assert.deepEqual(await readdir(dir).then(list => list.sort()), ['server.mjs', 'windows']); // 앱 파일은 그대로
+  await removeOldCopies(dir);
+  assert.deepEqual(await readdir(join(dir, 'windows', 'app')), ['jiwon-ilji.exe']);
 });

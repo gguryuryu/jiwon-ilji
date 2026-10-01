@@ -52,18 +52,34 @@ namespace JiwonIlji {
       link.GetArguments(text, text.Capacity);
       return text.ToString();
     }
+
+    public static string Target(string path) {
+      IShellLinkW link = (IShellLinkW)new ShellLink();
+      ((IPersistFile)link).Load(path, 0);
+      StringBuilder text = new StringBuilder(1024);
+      link.GetPath(text, text.Capacity, IntPtr.Zero, 0);
+      return text.ToString();
+    }
   }
 }
 "@
 
 $root = Split-Path -Parent $PSScriptRoot
 $launcher = Join-Path $root 'assets\launch-windows.vbs'
+# 지원일지 전용 창(windows\app\jiwon-ilji.exe)이 있으면 바로가기가 그것을 바로 연다.
+# 바로가기와 창이 같은 프로그램이라 작업 표시줄에 고정해도 아이콘이 하나로 합쳐진다. 없으면 예전처럼 Edge 앱 창 실행기.
+$app = Join-Path $root 'windows\app\jiwon-ilji.exe'
 $made = @()
 foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
   $path = Join-Path $folder '지원일지.lnk'
-  [JiwonIlji.Shortcut]::Save($path, (Join-Path $env:SystemRoot 'System32\wscript.exe'), ('"' + $launcher + '"'), $root, (Join-Path $root 'assets\icon-transparent.ico'), '지원일지')
+  if (Test-Path -LiteralPath $app) {
+    [JiwonIlji.Shortcut]::Save($path, $app, '', $root, (Join-Path $root 'assets\icon-transparent.ico'), '지원일지')
+    $saved = [JiwonIlji.Shortcut]::Target($path)
+  } else {
+    [JiwonIlji.Shortcut]::Save($path, (Join-Path $env:SystemRoot 'System32\wscript.exe'), ('"' + $launcher + '"'), $root, (Join-Path $root 'assets\icon-transparent.ico'), '지원일지')
+    $saved = [JiwonIlji.Shortcut]::Arguments($path).Trim('"')
+  }
   # 저장한 바로가기를 다시 읽어 경로가 깨지지 않았는지 확인한다.
-  $saved = [JiwonIlji.Shortcut]::Arguments($path).Trim('"')
   if (-not (Test-Path -LiteralPath $saved)) { throw "바로가기 경로를 확인하지 못했습니다: $saved" }
   $made += $path
 }

@@ -5,3 +5,4 @@ node_modules/
 windows/src/bin/
 windows/src/obj/
 windows/build/
+windows/app/*.old-*

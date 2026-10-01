@@ -18,7 +18,7 @@
 ### 3. 실행
 | | 실행 방법 |
 |---|---|
-| **윈도우** | 받은 폴더의 `windows-app.bat`을 **한 번** 실행하면 바탕화면과 시작 메뉴에 **지원일지 아이콘**이 생깁니다. 아이콘을 누르면 지원일지가 독립된 앱 창으로 열리고, **창을 닫으면 앱도 꺼집니다.** 시작 메뉴에서 우클릭 → 작업 표시줄에 고정해 두면 편합니다. (아이콘 없이 쓰려면 `start.bat` — 검은 창을 닫을 때까지 켜져 있습니다) |
+| **윈도우** | 받은 폴더의 `windows-app.bat`을 **한 번** 실행하면 바탕화면과 시작 메뉴에 **지원일지 아이콘**이 생깁니다. 아이콘을 누르면 지원일지가 **자기 창**(Edge 메뉴 없는 전용 창)으로 열리고, **창을 닫으면 작성 중인 내용을 저장한 뒤 앱도 꺼집니다.** 예전에 만든 아이콘도 새 창으로 열리지만, 작업 표시줄 아이콘을 하나로 합치려면 `windows-app.bat`을 한 번 다시 실행해 주세요. 시작 메뉴에서 우클릭 → 작업 표시줄에 고정해 두면 편합니다. (아이콘 없이 쓰려면 `start.bat` — 검은 창을 닫을 때까지 켜져 있습니다) |
 | **맥** | 받은 폴더에 들어 있는 **`지원일지.app`**을 Dock에 끌어다 두고 누르면 됩니다. 브라우저 없이 **자기 창으로** 열리고, 창을 닫거나 ⌘Q로 끝내면 저장을 마치고 꺼집니다. (앱은 폴더 안에 둔 채로 쓰세요. 다른 곳으로 옮기면 처음에 지원일지 폴더를 한 번 골라 달라고 합니다. 아이콘 없이 쓰려면 `start.command`) |
 
 - 앱 주소는 `http://127.0.0.1:4173` 입니다(앱이 켜져 있을 때만 열립니다).
@@ -94,7 +94,8 @@ js/experiences.js   경험 정리, calendar.js·ics.js·event-dialog.js 달력, 
 js/util.js, model.js, ui.js, dom.js   공통 도구, 상태 규칙, 알림·움직임, 자주 쓰는 화면 요소
 지원일지.app        맥 네이티브 앱(WKWebView 창, 인텔·애플 실리콘 겸용). 소스는 mac/main.swift, 다시 만들 때는 mac/build.command
 windows-app.bat     윈도우 아이콘 바로가기 만들기. start.bat · start.command는 아이콘 없이 실행
-assets/             아이콘(icon.svg 원본, icon-transparent.ico), 윈도우 실행기(launch-windows.vbs: 서버를 --exit-when-closed로 켜고 Edge 앱 창으로 연다), 바로가기 만들기(make-shortcut.ps1)
+assets/             아이콘(icon.svg 원본, icon-transparent.ico), 예전 윈도우 실행기(launch-windows.vbs: 전용 창이 있으면 그것을 열고, 없으면 Edge 앱 창), 바로가기 만들기(make-shortcut.ps1)
+windows/            윈도우 전용 창(src: WebView2 프로그램 소스, app: 빌드된 jiwon-ilji.exe). 빌드는 .github/workflows/windows-app.yml
 fonts/              Pretendard 글꼴(SIL Open Font License, fonts/OFL.txt)
 test/               자동 테스트(서버를 실제로 띄워 보는 테스트 포함)
 ```
