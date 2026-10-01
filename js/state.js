@@ -1,6 +1,6 @@
 // 앱 데이터와 지금 보고 있는 화면. 다른 파일은 setData, setRoute로만 바꾼다.
 
-export const emptyData = () => ({ version: 1, postings: [], experiences: [], calendarEvents: [], goals: [], certs: [] });
+export const emptyData = () => ({ version: 1, postings: [], experiences: [], calendarEvents: [], goals: [], certs: [], studyRoutines: [], studyBooks: [], studyLogs: [] });
 
 export let data = emptyData();
 

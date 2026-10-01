@@ -3577,6 +3577,35 @@ main.view-enter > :not(.peek) {
   font-variant-numeric: tabular-nums;
 }
 
+.gb-study {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--hover);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gb-study:hover {
+  background: var(--active);
+  color: var(--text);
+}
+
+.gb-study .icon {
+  width: 13px;
+  height: 13px;
+}
+
 .gb-add {
   display: grid;
   place-items: center;
@@ -4258,6 +4287,743 @@ ul.goal-group,
   .calendar-event:not(:has(.event-time)) .dot { grid-row: 1 / 3; }
 }
 
+
+/* ---------- 필기 공부 ---------- */
+/* 위: 공부 기록(이번 주·잔디)과 교재 진도 카드를 나란히 · 아래: 루틴 목록 */
+.study-page {
+  --grass: var(--c-green);
+}
+
+.study-layout {
+  display: grid;
+  gap: 28px;
+}
+
+.study-side {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  align-items: stretch;
+  gap: 12px;
+}
+
+/* 공부 기록 카드 안: 왼쪽 이번 주 숫자, 오른쪽 잔디 */
+.study-record {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-areas:
+    "head head"
+    "week grass"
+    "week legend";
+  align-items: start;
+  column-gap: 28px;
+}
+
+.study-record > .study-panel-head { grid-area: head; }
+.study-record > .study-week { grid-area: week; margin-bottom: 0; }
+/* 잔디는 너무 커지지 않게 폭을 묶고 오른쪽에 붙인다 */
+.study-record > .grass-scroll { grid-area: grass; width: calc(100% + 8px); max-width: 528px; justify-self: end; }
+.study-record > .grass-legend { max-width: 520px; width: 100%; justify-self: end; }
+.study-record > .grass-legend { grid-area: legend; }
+
+.study-panel {
+  padding: 16px 18px 18px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.study-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  margin-bottom: 14px;
+}
+
+.study-panel-head h2 {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.study-panel-head > span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.study-panel-empty {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.study-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  margin-right: -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.study-text-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.study-text-button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* 진행 막대(이번 주·교재 공통) */
+.study-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--active);
+}
+
+.study-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grass);
+  transition: width .3s cubic-bezier(.2, .8, .2, 1);
+}
+
+/* 이번 주 루틴 */
+.study-week {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.study-week-numbers {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: 13.5px;
+}
+
+.study-week-numbers strong {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+.study-week-numbers small {
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.study-week-note {
+  color: var(--text-3);
+  font-size: 11.5px;
+}
+
+/* 잔디: 작은 칸을 촘촘하게, 이번 주가 오른쪽 끝 */
+/* 폭이 좁으면 칸이 점처럼 작아지지 않게 가로로 밀어 본다 */
+.grass-scroll {
+  position: relative;
+  min-width: 0;
+  margin: -4px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.grass-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.grass {
+  --gap: 3px;
+  min-width: calc(var(--weeks) * 13px + 40px);
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 8px 6px;
+}
+
+.grass-months,
+.grass-cells,
+.grass-days {
+  display: grid;
+  gap: var(--gap);
+}
+
+.grass-months {
+  grid-column: 2;
+}
+
+/* 잔디를 가로로 밀 때 왼쪽 위 빈칸이 달 이름을 가려 준다 */
+.grass-corner {
+  position: sticky;
+  left: -4px;
+  z-index: 1;
+  margin-left: -4px;
+  background: var(--surface);
+}
+
+/* 깃허브처럼 왼쪽에 Mon · Wed · Fri */
+.grass-days {
+  position: sticky;
+  left: -4px;
+  z-index: 1;
+  margin-left: -4px;
+  padding-left: 4px;
+  background: var(--surface);
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1;
+}
+
+.grass-days span {
+  display: flex;
+  align-items: center;
+  height: 0;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.grass-months {
+  grid-template-columns: repeat(var(--weeks), minmax(0, 1fr));
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.grass-cells {
+  grid-template-rows: repeat(7, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.grass-cell {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .07);
+}
+
+button.grass-cell {
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
+}
+
+button.grass-cell:hover {
+  transform: scale(1.25);
+}
+
+.grass-cell.lv1 { background: color-mix(in srgb, var(--grass) 30%, var(--surface)); }
+.grass-cell.lv2 { background: color-mix(in srgb, var(--grass) 52%, var(--surface)); }
+.grass-cell.lv3 { background: color-mix(in srgb, var(--grass) 76%, var(--surface)); }
+.grass-cell.lv4 { background: var(--grass); }
+
+/* 색칠되지 않은 칸(안 한 날·쉬는 날·앞으로 올 날)은 깃허브처럼 모두 같은 색 */
+
+.grass-cell.today { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6); }
+.grass-cell.outside { visibility: hidden; }
+
+/* 반년 넘기기 */
+.grass-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: -6px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.grass-nav > span:not(.grass-nav-spacer) {
+  min-width: 92px;
+  text-align: center;
+}
+
+.grass-nav .icon-button,
+.grass-nav-spacer {
+  width: 26px;
+  height: 26px;
+}
+
+.grass-nav .icon-button .icon {
+  width: 15px;
+  height: 15px;
+}
+.grass-cell.selected { box-shadow: 0 0 0 2px var(--accent); }
+.grass-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.grass-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 12px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.grass-legend .grass-cell {
+  width: 12px;
+  border-radius: 3px;
+}
+
+.grass-legend > span:first-child { margin-right: 2px; }
+.grass-legend > span:last-child { margin-left: 2px; }
+
+/* 교재 진도 */
+.study-book-list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.study-book {
+  display: grid;
+  gap: 7px;
+}
+
+.study-book-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.study-book-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.study-book-percent {
+  color: var(--text-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.study-book-edit {
+  width: 24px;
+  height: 24px;
+  margin: -2px -6px -2px -2px;
+  opacity: 0;
+}
+
+.study-book:hover .study-book-edit,
+.study-book-edit:focus-visible {
+  opacity: 1;
+}
+
+.study-book-edit .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.study-book-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 오른쪽: 루틴 목록 */
+.study-content {
+  padding-top: 6px;
+}
+
+.study-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0 6px;
+}
+
+.study-section-heading h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -.015em;
+}
+
+.study-section-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-3);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.study-small-count {
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.study-category {
+  margin-top: 18px;
+}
+
+.study-category h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 2px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.study-category-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+
+.study-category ul,
+.study-managed-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.study-routine-row,
+.study-managed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  transition: background-color .12s;
+}
+
+.study-routine-row:hover,
+.study-managed-row:hover {
+  background: rgba(255, 255, 255, .025);
+}
+
+.study-check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1.5px solid rgba(255, 255, 255, .28);
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+
+.study-check .icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0;
+  stroke-width: 2.4;
+}
+
+.study-check:hover:not(:disabled) {
+  border-color: var(--grass);
+}
+
+.study-check[aria-checked=true] {
+  border-color: var(--grass);
+  background: var(--grass);
+}
+
+.study-check[aria-checked=true] .icon {
+  opacity: 1;
+}
+
+.study-check:disabled {
+  opacity: .35;
+  cursor: default;
+}
+
+.study-routine-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.study-routine-copy > strong {
+  font-size: 14.5px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.study-routine-copy > span {
+  color: var(--text-3);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.study-routine-row.is-complete .study-routine-copy > strong {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, .25);
+}
+
+.study-amount {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  line-height: inherit;
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.study-amount:hover {
+  color: var(--text);
+}
+
+/* 수정 버튼은 줄에 올렸을 때만 */
+.study-row-edit,
+.study-row-actions {
+  opacity: 0;
+  transition: opacity .12s;
+}
+
+.study-routine-row:hover .study-row-edit,
+.study-managed-row:hover .study-row-actions,
+.study-row-edit:focus-visible,
+.study-row-actions:focus-within {
+  opacity: 1;
+}
+
+.study-row-edit {
+  width: 28px;
+  height: 28px;
+  color: var(--text-3);
+}
+
+.study-row-edit .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.study-row-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.study-row-actions .ghost-button {
+  height: 28px;
+  font-size: 12.5px;
+}
+
+/* 루틴·교재 탭 */
+.study-kind {
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+
+.study-managed-row .study-routine-copy > strong {
+  display: flex;
+  align-items: center;
+}
+
+.study-managed-row .study-routine-copy > span {
+  padding-left: 0;
+}
+
+.study-managed-row.paused .study-routine-copy {
+  opacity: .5;
+}
+
+.study-rest-day {
+  margin-top: 14px;
+  padding: 16px 8px;
+}
+
+.study-muted-row {
+  margin: 0;
+  padding: 10px 8px 14px;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.study-content > .field-help {
+  margin-top: 14px;
+}
+
+/* 루틴이 하나도 없을 때 */
+.study-empty {
+  margin-top: 18px;
+  padding: 28px 24px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.study-empty h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.study-empty p {
+  margin: 0 0 18px;
+  color: var(--text-3);
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.study-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 루틴·교재·공부 기록 창: 앱의 다른 창과 같은 입력칸, 목표 창과 같은 선택 막대 */
+/* 칸이 늘거나 줄어도 창 윗변은 그대로, 아래로만 바뀌게 화면 위쪽에 붙인다 */
+.study-dialog {
+  margin-top: max(24px, 7vh);
+  margin-bottom: auto;
+  max-height: calc(100vh - max(24px, 7vh) - 24px);
+}
+
+.study-dialog .form-grid { margin-top: 20px; row-gap: 18px; }
+.study-dialog .faint { color: var(--text-3); font-weight: 400; }
+
+.study-field {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.study-field-label {
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.study-dialog .segmented {
+  flex-wrap: wrap;
+}
+
+.study-dialog .segment {
+  height: 30px;
+  padding: 0 13px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.study-field-wide {
+  grid-column: 1 / -1;
+}
+
+/* 구분 '+ 추가'와 그 자리에 열리는 이름 칸 */
+.study-dialog .segment-add {
+  color: var(--text-3);
+}
+
+.study-dialog .segment-add:hover {
+  color: var(--text);
+}
+
+.study-dialog .form-grid input.study-new-category {
+  width: 110px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.study-dialog .segment:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+.study-dialog .segment.active:disabled {
+  opacity: 1;
+}
+
+/* 반복 요일: 일곱 칸 토글, 오른쪽에 평일·매일 빠른 선택 */
+.study-dialog .study-repeat { min-width: 0; margin: 0; padding: 0; border: 0; }
+.study-repeat-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.study-day-presets { display: flex; gap: 2px; margin-right: -6px; }
+.study-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 9px; background: var(--hover); }
+.study-days label { position: relative; cursor: pointer; }
+.study-days input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.study-days span { display: grid; place-items: center; height: 32px; border-radius: 6px; color: var(--text-3); font-size: 13px; transition: background-color .12s, color .12s; }
+.study-days label:hover span { color: var(--text); }
+.study-days input:checked + span { background: rgba(255, 255, 255, .16); box-shadow: 0 1px 2px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(255, 255, 255, .06); color: #fff; font-weight: 500; }
+.study-days input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 교재 고르기: 기본 위아래 화살표 대신 앱의 아래 화살표 */
+.study-dialog select.study-select {
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 15px;
+  cursor: pointer;
+}
+
+.study-inline-add { margin-top: -10px; }
+.study-inline-add .study-text-button { margin-left: -6px; }
+
+/* 하루 목표 분량: 숫자 칸 옆에 단위 */
+.study-amount-input { display: flex; align-items: center; gap: 10px; }
+.study-amount-input input { max-width: 140px; }
+.study-amount-input span { color: var(--text-2); font-size: 14px; }
+
+.study-record-summary { display: flex; flex-direction: column; gap: 5px; }
+.study-record-summary strong { font-size: 15px; font-weight: 600; }
+.study-record-summary span { color: var(--text-3); font-size: 13px; }
+.study-form-error { margin: 12px 0 0; color: var(--danger); font-size: 13px; }
+.study-dialog input:invalid:not(:placeholder-shown):not(:focus) { box-shadow: none; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
 @media (max-width: 1100px) {
   main {
     padding-left: 36px;
@@ -4506,4 +5272,35 @@ ul.goal-group,
 }
 @media (max-width: 760px) {
   .sidebar-collapsed .peek { width: 100%; }
+}
+
+/* 필기 공부: 좁은 창에서는 공부 기록 · 교재 진도 · 루틴 순서로 한 줄씩 */
+@media (max-width: 1000px) {
+  .study-layout {
+    gap: 20px;
+  }
+
+  .study-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .study-record {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "week" "grass" "legend";
+  }
+
+  .study-record > .study-week {
+    margin-bottom: 18px;
+  }
+}
+
+/* 마우스가 없는 기기에서는 수정 버튼을 늘 보인다 */
+@media (hover: none) {
+  .study-row-edit,
+  .study-row-actions,
+  .study-book-edit {
+    opacity: 1;
+  }
 }

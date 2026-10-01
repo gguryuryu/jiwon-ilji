@@ -2,6 +2,7 @@
 import { $, main } from './dom.js';
 import { addMonths, goalProgress, goalStatuses, isLanguageTest, monthLabel, newCert, newGoal, normalizeMonth, splitCertTitle } from './model.js';
 import { navTo } from './router.js';
+import { goalRoutinesOn, linkedRoutines, removeRoutine, studyCategoryFor, todayRoutines } from './study-model.js';
 import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
 import { animateReorder, flushPending, reducedMotion, showToast } from './ui.js';
@@ -22,6 +23,17 @@ const updatePie = (element, percent) => {
 // ---------- 지원 현황 위: 진행 중 · 남은 목표 · 자격 · 해 온 것 ----------
 const SHOWN = 4;
 
+// 이름에 공부 기록의 구분(NCS·전공 등)이나 '필기'가 들어간 목표에는 오늘 루틴을 얼마나 했는지 붙이고, 누르면 공부 기록 탭으로 간다.
+function studyLink(goal) {
+  if (!data.studyRoutines?.some(routine => !routine.deletedAt)) return '';
+  // 루틴을 직접 이은 목표(자격증)는 그 루틴만, 아니면 이름에 든 구분(NCS·전공 등)의 루틴을 센다.
+  const linked = linkedRoutines(data, goal.id).length > 0;
+  const category = linked ? null : studyCategoryFor(data, goal.title);
+  if (!linked && category === null) return '';
+  const { done, total } = linked ? goalRoutinesOn(data, todayKey(), goal.id) : todayRoutines(data, todayKey(), category);
+  return `<button type="button" class="gb-study" data-action="open-study" title="공부 기록에서 보기">${icon('book')}${total ? `오늘 ${done}/${total}` : '공부 기록'}</button>`;
+}
+
 function doingItem(goal) {
   const { total, percent } = goalProgress(goal);
   const next = goal.tasks.find(task => !task.done);
@@ -30,13 +42,13 @@ function doingItem(goal) {
     ? `<button type="button" class="gb-next" data-action="check-task" data-id="${id}" data-task="${escapeHtml(next.id)}" title="끝냈으면 체크"><span class="check-box" aria-hidden="true"></span><span>${escapeHtml(next.text)}</span></button>`
     : total ? '<span class="gb-sub">할 일을 모두 끝냈어요</span>'
     : `<span class="gb-sub gb-adjust"><button type="button" data-action="progress-step" data-id="${id}" data-step="-10" aria-label="10% 줄이기"${percent <= 0 ? ' disabled' : ''}>−</button><button type="button" data-action="progress-step" data-id="${id}" data-step="10" aria-label="10% 늘리기"${percent >= 100 ? ' disabled' : ''}>+</button></span>`;
-  return `<li class="gb-item gb-goal" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${id}"><span class="gb-line"><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span>${pieHtml(percent)}</span>${sub}</li>`;
+  return `<li class="gb-item gb-goal" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${id}"><span class="gb-line"><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span>${studyLink(goal)}${pieHtml(percent)}</span>${sub}</li>`;
 }
 
 // 아직 시작하지 않은 목표 표시: 점선 원. CSS 점선 테두리는 작은 원에서 점선이 고르지 않아(특히 사파리) SVG로 그린다.
 const todoRing = '<svg class="todo-ring" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" pathLength="24" /></svg>';
 
-const todoItem = goal => `<li class="gb-item" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${escapeHtml(goal.id)}"><span class="gb-line"><span class="gb-mark" aria-hidden="true">${todoRing}</span><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span><span class="gb-meta">${escapeHtml(monthLabel(goal.target))}</span></span></li>`;
+const todoItem = goal => `<li class="gb-item" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${escapeHtml(goal.id)}"><span class="gb-line"><span class="gb-mark" aria-hidden="true">${todoRing}</span><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span>${studyLink(goal)}<span class="gb-meta">${escapeHtml(monthLabel(goal.target))}</span></span></li>`;
 
 // 해 온 것: 끝낸 목표, 자격 · 어학 점수, 최종 합격을 날짜순으로 한데 모은다.
 // 자격증 목표를 완료해 자격이 생겼으면 목표 대신 자격 한 줄로만 보여 준다.
@@ -133,8 +145,14 @@ function finishGoal(goal) {
     if (cert) { data.certs = data.certs.filter(entry => entry !== cert); goal.certId = ''; }
     touch(goal); persist(); animateReorder(refreshGoals, goal.id);
   } };
-  if (cert) showToast(`‘${goal.title}’ 완료! 해 온 것에 자격으로 남겼어요.`, cert.score ? undo : [{ label: '점수 적기', run: () => openCertDialog(cert) }, undo]);
-  else showToast(`‘${goal.title || '목표'}’ 완료! 해 온 것에 남겼어요.`, undo);
+  // 이 목표에 이은 공부 루틴이 있으면, 목표를 이뤘으니 루틴도 정리할지 묻는다(지난 기록·잔디는 남는다).
+  const routines = linkedRoutines(data, goal.id);
+  const tidy = routines.length ? [{ label: `공부 루틴 ${routines.length}개 정리`, run: () => {
+    const undos = routines.map(routine => removeRoutine(data, routine, todayKey())); persist(); refreshGoals();
+    showToast(`루틴 ${routines.length}개를 정리했어요. 지난 기록은 남아 있어요.`, { label: '되돌리기', run: () => { undos.forEach(restore => restore()); persist(); refreshGoals(); } });
+  } }] : [];
+  if (cert) showToast(`‘${goal.title}’ 완료! 해 온 것에 자격으로 남겼어요.`, [...(cert.score ? [] : [{ label: '점수 적기', run: () => openCertDialog(cert) }]), ...tidy, undo]);
+  else showToast(`‘${goal.title || '목표'}’ 완료! 해 온 것에 남겼어요.`, [...tidy, undo]);
 }
 
 // 체크하면 같은 자리에 다음 할 일이 나타나므로, 잇따라 누른 두 번째 클릭은 무시한다.
@@ -373,6 +391,7 @@ main.addEventListener('click', event => {
   }
   if (action === 'new-done-goal') { const created = { ...newGoal('done'), doneAt: todayKey() }; data.goals.push(created); openGoalDialog(created); }
   if (action === 'open-posting-page') navTo('posting-detail', control.dataset.id);
+  if (action === 'open-study') { navTo('study'); return; }
   if (action === 'new-goal') { const created = newGoal(control.dataset.status || 'todo'); data.goals.push(created); openGoalDialog(created); }
   if (action === 'new-cert') { const created = newCert(); data.certs.push(created); openCertDialog(created); }
   if (action === 'open-cert') { const cert = data.certs.find(entry => entry.id === control.dataset.id); if (cert) openCertDialog(cert); }
