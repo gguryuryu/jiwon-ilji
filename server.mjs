@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
 import { dirname, join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lookup } from 'node:dns/promises';
@@ -43,7 +43,14 @@ async function writeAtomic(path, text, options = 'utf8') {
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${randomUUID()}.tmp`;
   await writeFile(temporary, text, options);
-  await rename(temporary, path);
+  // 윈도우에서는 백신·OneDrive가 파일을 잠깐 붙잡고 있어 이름 바꾸기가 실패할 때가 있다. 잠시 뒤 몇 번 더 시도한다.
+  for (let attempt = 0; ; attempt++) {
+    try { await rename(temporary, path); return; }
+    catch (error) {
+      if (attempt >= 8 || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) { await rm(temporary, { force: true }).catch(() => {}); throw error; }
+      await new Promise(resolve => setTimeout(resolve, 50 * 2 ** Math.min(attempt, 4)));
+    }
+  }
 }
 
 class ConflictError extends Error {
@@ -215,9 +222,12 @@ function staticFile(pathname) {
 // 열려 있는 화면은 30초마다 신호(ping)를 보내고, 닫힐 때 작별 신호(bye)를 보낸다.
 // 열린 화면이 하나도 없으면 저장을 마친 뒤 서버를 끈다. 닫힐 때 신호를 놓쳐도 idleMs 뒤에는 꺼진다.
 const exitWhenClosed = process.argv.includes('--exit-when-closed');
-const idleMs = Number(process.env.JIWON_IDLE_MS || 150_000);
+// 창이 가려지거나 절전 모드로 신호가 늦게 와도 꺼지지 않게 넉넉히 기다린다(닫을 때는 작별 신호로 바로 꺼진다).
+const idleMs = Number(process.env.JIWON_IDLE_MS || 600_000);
+const sweepMs = Math.min(15_000, idleMs / 3);
 const clients = new Map();
 let lastSeen = Date.now();
+let lastSweep = Date.now();
 
 async function shutdown() {
   await writeChain.catch(() => {});
@@ -229,11 +239,14 @@ async function shutdown() {
 // 오래 신호가 없는 화면은 닫힌 것으로 보고, 열린 화면이 하나도 없으면 끈다(창이 늦게 떠도 idleMs는 기다린다).
 function sweep() {
   const now = Date.now();
+  // 컴퓨터가 잠자기에서 깨어나면 이 확인이 한참 늦게 돈다. 그동안 신호가 없던 건 창이 닫혀서가 아니므로 처음부터 다시 기다린다.
+  const slept = now - lastSweep > sweepMs * 3; lastSweep = now;
+  if (slept) { lastSeen = now; for (const id of clients.keys()) clients.set(id, now); return; }
   for (const [id, seen] of clients) if (now - seen > idleMs) clients.delete(id);
   if (!clients.size && now - lastSeen > idleMs) shutdown();
 }
 
-if (exitWhenClosed) setInterval(sweep, Math.min(15_000, idleMs / 3)).unref();
+if (exitWhenClosed) setInterval(sweep, sweepMs).unref();
 
 // 신호는 앱 화면만 보낼 수 있게 전용 헤더를 요구한다(다른 웹사이트는 이 헤더를 붙여 보낼 수 없다).
 async function presence(request, response, kind) {

@@ -20,6 +20,7 @@ let baseSnapshot = '{}';
 let saveWaiting = false;
 
 let saveRetries = 0;
+let saveError = ''; // 마지막 저장 실패 이유(업데이트 안내에 함께 보여 준다)
 
 let retryTimer;
 
@@ -54,7 +55,7 @@ async function sendSave() {
 
 // 저장이 실패하면 1초, 2초, 4초… 간격으로 다시 시도하고, 여섯 번째에도 안 되면 알린다.
 function retrySave(reason) {
-  saveRetries += 1;
+  saveRetries += 1; saveError = reason;
   if (saveRetries > 5) {
     setSaveState('저장 오류');
     showToast(`저장하지 못했어요 · ${reason}`, { label: '다시 시도', run: () => { saveRetries = 0; persist(); } });
@@ -125,7 +126,10 @@ export async function saveBeforeUpdate() {
     await pending;
     if (pending === saveQueue && !saveWaiting) break;
   }
-  if (saveRetries) throw new Error('작성한 내용을 아직 저장하지 못했어요. 저장이 완료된 뒤 업데이트를 다시 눌러 주세요.');
+  if (!saveRetries) return;
+  // 앱 서버가 꺼졌으면(잠자기에서 깨어난 뒤 등) 이 창을 닫지 말고 앱을 다시 켜야 적은 내용이 저장된다.
+  if (/연결하지 못했어요/.test(saveError)) throw new Error('앱 서버가 꺼져 있어 저장하지 못했어요. 이 창은 닫지 말고 지원일지 아이콘을 다시 눌러 켠 뒤, 업데이트를 다시 눌러 주세요.');
+  throw new Error(`작성한 내용을 아직 저장하지 못했어요(${saveError}). 저장이 완료된 뒤 업데이트를 다시 눌러 주세요.`);
 }
 
 export function scheduleSave() {
