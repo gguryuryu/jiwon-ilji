@@ -4970,11 +4970,21 @@ button.grass-cell:hover {
 }
 
 .study-dialog .form-grid input.study-new-category {
+  /* 선택 막대 칸과 같은 높이·자리: 입력칸 기본 위 여백(6px)을 없애 아래로 처지지 않게 */
   width: 110px;
   height: 30px;
+  margin: 0;
   padding: 0 10px;
+  border: 0;
   border-radius: 5px;
+  background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 0 0 1px var(--accent);
   font-size: 13px;
+}
+
+.study-dialog .form-grid input.study-new-category:focus {
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 2px var(--accent-soft);
 }
 
 .study-dialog .segment:disabled {
