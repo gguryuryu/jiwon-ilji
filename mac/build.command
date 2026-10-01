@@ -14,13 +14,9 @@ for arch in arm64 x86_64; do
 done
 lipo -create -output "$work/jiwon-ilji" "$work/jiwon-ilji-arm64" "$work/jiwon-ilji-x86_64"
 
-echo '아이콘을 만드는 중…'
-qlmanage -t -s 1024 -o "$work" "$root/assets/icon.svg" >/dev/null 2>&1
-mkdir "$work/AppIcon.iconset"
-for size in 16 32 128 256 512; do
-  sips -z $size $size "$work/icon.svg.png" --out "$work/AppIcon.iconset/icon_${size}x${size}.png" >/dev/null
-  sips -z $((size * 2)) $((size * 2)) "$work/icon.svg.png" --out "$work/AppIcon.iconset/icon_${size}x${size}@2x.png" >/dev/null
-done
+echo '아이콘을 만드는 중(맥 · 윈도우)…'
+# assets/icon.svg에서 맥 아이콘과 윈도우 바로가기 아이콘을 함께 만든다(둥근 판 바깥은 투명).
+swift icons.swift "$root/assets/icon.svg" "$work/AppIcon.iconset" "$root/assets/icon-transparent.ico"
 iconutil -c icns "$work/AppIcon.iconset" -o "$work/AppIcon.icns"
 
 echo '앱을 묶는 중…'

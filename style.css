@@ -152,8 +152,9 @@ textarea:focus-visible {
   width: 24px;
   height: 24px;
   border-radius: 7px;
-  background: rgba(255, 255, 255, .9);
-  color: #191919;
+  background: #1c1c1e;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .13);
+  color: #f2f2f2;
 }
 
 .brand-mark svg {
