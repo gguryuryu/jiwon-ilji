@@ -62,7 +62,7 @@ export function breakLoop(block, now = new Date()) {
     : Math.round(state.phase === 'focus' ? (state.round - 1) * plan.focus + (state.phaseLength - state.left) / 60 : state.round * plan.focus);
   const run = { date: dateKey(started), at: block.runningSince, endedAt: now.toISOString(), minutes: Math.max(0, focusMinutes), ...(plan ? { rounds } : {}) };
   block.runs = [...(block.runs || []), run];
-  block.runningSince = ''; block.pausedAt = ''; block.pausedMs = 0;
+  block.runningSince = ''; block.pausedAt = ''; block.pausedMs = 0; block.untilAt = '';
   return run;
 }
 
@@ -176,4 +176,46 @@ export function linkChoices(state, date) {
   const routines = liveRoutines(state).map(routine => ({ link: { type: 'routine', id: routine.id }, title: routine.title, meta: `${routine.category}${today.has(routine.id) ? ' · 오늘' : ''}`, today: today.has(routine.id) })).sort((a, b) => Number(b.today) - Number(a.today));
   const tasks = (state.goals || []).filter(goal => goal.status === 'doing').flatMap(goal => (goal.tasks || []).filter(task => !task.done).map(task => ({ link: { type: 'task', goalId: goal.id, taskId: task.id }, title: task.text, meta: goal.title })));
   return { routines, tasks };
+}
+
+// ---------- 시각까지: while 15시까지: / ~18:30 / until 18:30 ----------
+// '까지'·'~'·'until' 가운데 하나가 있어야 시각으로 본다('3시 회의 전에'처럼 그냥 숫자가 든 조건은 건드리지 않는다).
+export function parseUntil(cond) {
+  const text = String(cond || '').trim();
+  if (!/까지\s*$|^~|^until\b/i.test(text)) return null;
+  const body = text.replace(/^~\s*|^until\s+/i, '').replace(/\s*까지\s*$/, '').trim();
+  const match = body.match(/^(오전|오후|am|pm)?\s*(\d{1,2})\s*(?:(?::|시)\s*(?:(\d{1,2})\s*분?)?)?\s*(오전|오후|am|pm)?$/i);
+  if (!match) return null;
+  let hour = Number(match[2]); const minute = Number(match[3] || 0);
+  const half = (match[1] || match[4] || '').toLowerCase();
+  if (half === '오후' || half === 'pm') { if (hour < 12) hour += 12; } else if ((half === '오전' || half === 'am') && hour === 12) hour = 0;
+  if (hour > 24 || minute > 59 || (hour === 24 && minute)) return null;
+  // 오전·오후 없이 1~11시를 적었으면, 그 시각이 지났을 때 오후로 본다(낮에 '3시까지'는 보통 15시).
+  return { hour, minute, flexible: !half && hour >= 1 && hour <= 11, label: `${String(hour % 24).padStart(2, '0')}:${String(minute).padStart(2, '0')}` };
+}
+
+// 그 시각(시작한 날 기준). 이미 지났으면 null — 다음 날로 넘기지 않고 알려 준다.
+export function untilDate(plan, from = new Date()) {
+  const target = new Date(from); target.setHours(plan.hour, plan.minute, 0, 0);
+  if (target > from) return target;
+  if (plan.flexible) { target.setHours(plan.hour + 12, plan.minute, 0, 0); if (target > from) return target; }
+  return null;
+}
+
+// 도는 동안: 남은 초(벽시계 기준, pause해도 끝나는 시각은 그대로)와 진행률
+export function untilState(block, now = new Date()) {
+  if (!block.untilAt) return null;
+  const start = new Date(block.runningSince); const end = new Date(block.untilAt);
+  const total = Math.max(1, (end - start) / 1000); const left = Math.max(0, (end - now) / 1000);
+  return { left, total, progress: 1 - left / total, done: left <= 0, end };
+}
+
+// 그 시각이 되면: 실제로 한 시간(멈춘 시간 빼고)을 기록하고 '끝까지 함'으로 남긴다.
+export function finishUntil(block) {
+  if (!block.runningSince || !block.untilAt) return null;
+  const end = new Date(block.untilAt);
+  const run = { date: dateKey(new Date(block.runningSince)), at: block.runningSince, endedAt: block.untilAt, minutes: Math.round(activeSeconds(block, end) / 60), until: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`, completed: true };
+  block.runs = [...(block.runs || []), run];
+  block.runningSince = ''; block.pausedAt = ''; block.pausedMs = 0; block.untilAt = '';
+  return run;
 }

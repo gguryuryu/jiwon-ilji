@@ -5077,6 +5077,7 @@ button.grass-cell:hover {
   --lab-focus: #ed8796;
   --lab-rest: #8aadf4;
   --lab-done: #8bd5ca;
+  --lab-until: #7dc4e4;
   --lab-editor: var(--surface);
   --lab-mantle: color-mix(in srgb, var(--bg) 55%, var(--surface));
   --lab-crust: var(--bg);
@@ -5491,6 +5492,7 @@ button.grass-cell:hover {
 .lab-ascii.focus b { color: var(--lab-focus); }
 .lab-ascii.rest b { color: var(--lab-rest); }
 .lab-ascii.loop b { color: var(--lab-live); }
+.lab-ascii.until b, .lab-phase.until { color: var(--lab-until); }
 
 .lab-pct {
   min-width: 4ch;
@@ -5521,6 +5523,7 @@ button.grass-cell:hover {
 
 .lab-now.rest { --dial: var(--lab-rest); }
 .lab-now.loop { --dial: var(--lab-live); }
+.lab-now.until { --dial: var(--lab-until); }
 
 /* 대기 중: 같은 크기·자리를 지키되 색 없이 조용하게 */
 .lab-now.idle {

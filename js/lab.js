@@ -5,7 +5,7 @@ import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
 import { showToast } from './ui.js';
 import { escapeHtml as esc, todayKey } from './util.js';
-import { activeSeconds, breakLoop, clock, finishBlock, liveBlocks, pauseLoop, resumeLoop, completeLink, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
+import { activeSeconds, breakLoop, clock, finishUntil, parseUntil, untilDate, untilState, finishBlock, liveBlocks, pauseLoop, resumeLoop, completeLink, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
 
 const blockById = id => data.labBlocks.find(block => block.id === id);
 const bodyLabel = block => { const call = block.link && linkCall(data, block.link); return call ? `${call.ns}.${call.name}()` : block.body || '…'; };
@@ -17,7 +17,7 @@ let freshId = ''; // 방금 실행한 블록: 주석·출력 줄이 타자 치�
 // 칸 너비를 글자에 맞춰 늘린다(보이지 않는 글자 복사본이 칸 크기를 정한다).
 const field = (block, name, placeholder) => {
   const locked = name === 'cond' && Boolean(block.runningSince);
-  const number = name === 'cond' && block.kind === 'while' && parsePomodoro(block.cond);
+  const number = name === 'cond' && block.kind === 'while' && (parsePomodoro(block.cond) || parseUntil(block.cond));
   return `<span class="lab-autosize lab-${name}${number ? ' lab-num' : ''}" data-value="${esc(block[name] || placeholder)}"><input size="1" data-field="${name}" data-id="${esc(block.id)}" value="${esc(block[name])}" placeholder="${placeholder}" spellcheck="false" autocomplete="off" aria-label="${block.kind} ${name === 'cond' ? '조건' : '할 일'}"${locked ? ' readonly title="실행 중인 조건이에요. break로 종료한 뒤 수정할 수 있어요."' : ''}></span>`;
 };
 
@@ -36,6 +36,13 @@ function commentFor(block, today) {
 
 // 괄호 옆 작은 힌트(코드 편집기의 인레이 힌트처럼): 뽀모도로 계획
 const hintFor = plan => plan ? `<span class="lab-hint" title="조건에 숫자를 넣으면 뽀모도로가 돼요"># ${plan.focus}m${plan.rounds > 1 ? ` × ${plan.rounds}, rest ${plan.rest}m` : ''}</span>` : '';
+// 시각까지: '# until 15:00 · 1시간 23분 남음' (이미 지났으면 알려 준다)
+const untilHint = until => {
+  if (!until) return '';
+  const target = untilDate(until); const minutes = target ? Math.ceil((target - Date.now()) / 60_000) : 0;
+  return `<span class="lab-hint" title="이 시각까지 타이머가 돌아요"># until ${target ? `${String(target.getHours()).padStart(2, '0')}:${String(target.getMinutes()).padStart(2, '0')} · ${minutesLabel(minutes)} 남음` : `${until.label} · 이미 지난 시각이에요`}</span>`;
+};
+const condHint = block => block.kind !== 'while' ? '' : block.untilAt ? `<span class="lab-hint"># until ${hhmm(block.untilAt)}</span>` : hintFor(parsePomodoro(block.cond)) || untilHint(parseUntil(block.cond));
 
 // 글자로 그린 진행 막대(레트로 터미널처럼): [████████░░░░░░░░]
 const BAR = 20;
@@ -45,6 +52,8 @@ const loopBar = seconds => { const span = BAR - 3; const step = Math.floor(secon
 
 // 도는 동안 블록 안에 생기는 진행 줄(남은 시간은 오른쪽 시계가 보여 준다)
 function progressHtml(block) {
+  const until = untilState(block);
+  if (until) return `<span class="lab-indent"></span><span class="lab-ascii until" data-ascii>${asciiBar(until.progress)}</span><span class="lab-pct" data-pct>${Math.floor(until.progress * 100)}%</span><span class="lab-phase until">until ${hhmm(block.untilAt)}</span><span class="lab-left" data-left>${hms(until.left)}</span>`;
   const plan = parsePomodoro(block.cond);
   if (plan) {
     const state = pomodoroState(plan, elapsedSeconds(block));
@@ -74,6 +83,9 @@ function dialState(block) {
 }
 
 function dialStateRaw(block) {
+  const until = untilState(block);
+  // 시각까지: 시작할 때 가득 찼다가 그 시각에 0이 된다(남은 비율만큼 부채꼴).
+  if (until) return { minutes: (1 - until.progress) * 60, time: hms(until.left), label: `until ${hhmm(block.untilAt)}`, phaseText: `${hhmm(block.untilAt)}까지 · ${minutesLabel(Math.ceil(until.left / 60))} 남음`, tone: 'until' };
   const plan = parsePomodoro(block.cond); const seconds = elapsedSeconds(block);
   if (plan) {
     const state = pomodoroState(plan, seconds);
@@ -149,7 +161,7 @@ function blockHtml(block, startLine, today) {
   const line = (content, extra = '') => `<div class="lab-line${extra}"><span class="lab-gutter" aria-hidden="true">${number === first ? gutterMark(block, today) : ''}</span><span class="lab-no" aria-hidden="true">${number++}</span><div class="lab-code">${content}</div></div>`;
   const placeholder = block.kind === 'while' ? '지하철 타는 동안' : '밥 먹고 나면';
   const html = [`<section class="lab-block${running ? ' running' : ''}${block.pausedAt ? ' paused' : ''}${plan ? ' pomodoro' : ''}${block.id === freshId ? ' fresh' : ''}" data-kind="${block.kind}" data-id="${esc(block.id)}" aria-label="${block.kind} 블록"><div class="lab-block-lines">`,
-    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${hintFor(plan)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">✓ done</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
+    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${condHint(block)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">✓ done</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
     line(`<span class="lab-indent"></span>${bodyHtml(block, today)}`, ' lab-body-line'),
     running ? line(progressHtml(block), ' lab-progress') : '',
     comment ? line(`<span class="lab-indent"></span><span class="lab-comment">${esc(comment)}</span>`) : '',
@@ -186,12 +198,12 @@ function nowHtml() {
   const running = liveBlocks(data).filter(item => item.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
   const dial = dialState(block); const plan = parsePomodoro(block.cond);
   const tabs = running.length > 1 ? `<div class="lab-now-tabs" role="tablist" aria-label="실행 중인 while">${running.map(item => `<button type="button" role="tab" class="lab-now-tab${item === block ? ' active' : ''}" aria-selected="${item === block}" data-lab="show-now" data-id="${esc(item.id)}"><span class="lab-kw">while</span> ${esc(item.cond || '…')}:</button>`).join('')}</div>` : '';
-  const detail = plan ? `${plan.focus}분 집중 × ${plan.rounds}${plan.rounds > 1 ? ` · 휴식 ${plan.rest}분` : ''}` : 'break할 때까지 도는 중';
+  const detail = block.untilAt ? `총 ${minutesLabel(Math.round((new Date(block.untilAt) - new Date(block.runningSince)) / 60_000))} · pause해도 끝나는 시각은 그대로` : plan ? `${plan.focus}분 집중 × ${plan.rounds}${plan.rounds > 1 ? ` · 휴식 ${plan.rest}분` : ''}` : 'break할 때까지 도는 중';
   return `<section class="lab-now ${dial.tone}${block.pausedAt ? ' paused' : ''}" data-now="${esc(block.id)}" aria-label="지금 실행 중">
     ${dialHtml(block)}
     <div class="lab-now-info">
       ${tabs}
-      <div class="lab-now-code"><span class="lab-kw">while</span> <span class="lab-cond${plan ? ' lab-num' : ''}">${esc(block.cond || '…')}</span><span class="lab-punct">:</span> <span class="lab-now-body">${esc(bodyLabel(block))}</span></div>
+      <div class="lab-now-code"><span class="lab-kw">while</span> <span class="lab-cond${plan || block.untilAt ? ' lab-num' : ''}">${esc(block.cond || '…')}</span><span class="lab-punct">:</span> <span class="lab-now-body">${esc(bodyLabel(block))}</span></div>
       <div class="lab-now-state"><span class="lab-now-phase" data-now-phase>${dial.phaseText}</span><span class="lab-now-detail">${detail}</span></div>
       <div class="lab-now-actions"><button type="button" class="lab-run lab-pause" data-lab="${block.pausedAt ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${block.pausedAt ? '▶ resume' : '❚❚ pause'}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button><span class="lab-now-since">${hhmm(block.runningSince)}부터</span></div>
     </div>
@@ -210,7 +222,8 @@ function statusHtml(today) {
   const ran = data.labBlocks.reduce((sum, block) => sum + runsOn(block, today).length, 0);
   const first = running[0]; const plan = first && parsePomodoro(first.cond);
   const state = plan && pomodoroState(plan, elapsedSeconds(first));
-  const now = !first ? '' : state ? `pomo ${state.round}/${plan.rounds} · ${state.phase === 'rest' ? 'break' : 'focus'} ${clock(state.left)}` : `loop ${hms(elapsedSeconds(first))}`;
+  const until = first && untilState(first);
+  const now = !first ? '' : until ? `until ${hhmm(first.untilAt)} · ${hms(until.left)}` : state ? `pomo ${state.round}/${plan.rounds} · ${state.phase === 'rest' ? 'break' : 'focus'} ${clock(state.left)}` : `loop ${hms(elapsedSeconds(first))}`;
   return `<span>⎇ main</span><span class="lab-status-state">${running.length ? `● ${running.length} running` : '○ idle'}</span>${now ? `<span class="lab-status-now">${now}</span>` : ''}<span class="lab-status-right">오늘 실행 ${ran} · UTF-8 · Python 3.12</span>`;
 }
 
@@ -278,10 +291,10 @@ export function renderLab() {
       // 괄호에 숫자를 적는 순간 뽀모도로 힌트가 붙는다(다시 그리지 않고 힌트만 바꾼다).
       if (input.dataset.field === 'cond' && block.kind === 'while' && !block.runningSince) {
         const code = input.closest('.lab-code'); code.querySelector('.lab-hint')?.remove();
-        const plan = parsePomodoro(block.cond);
-        if (plan) code.querySelectorAll('.lab-punct')[1]?.insertAdjacentHTML('afterend', hintFor(plan));
+        const plan = parsePomodoro(block.cond); const hint = condHint(block);
+        if (hint) code.querySelectorAll('.lab-punct')[1]?.insertAdjacentHTML('afterend', hint);
         input.closest('.lab-block').classList.toggle('pomodoro', Boolean(plan));
-        input.parentElement.classList.toggle('lab-num', Boolean(plan));
+        input.parentElement.classList.toggle('lab-num', Boolean(plan || parseUntil(block.cond)));
       }
       scheduleSave();
     });
@@ -334,7 +347,11 @@ main.addEventListener('click', event => {
     return;
   }
   if (action === 'start') {
-    startLoop(block); freshId = block.id; nowId = block.id; persist(); keepScroll(renderLab);
+    const until = parseUntil(block.cond); const target = until && untilDate(until);
+    if (until && !target) { showToast(`${until.label}은 이미 지난 시각이에요. 조건의 시각을 바꿔 주세요.`); return; }
+    startLoop(block); if (target) block.untilAt = target.toISOString();
+    freshId = block.id; nowId = block.id; persist(); keepScroll(renderLab);
+    if (target) { showToast(`${hhmm(block.untilAt)}까지 · ${minutesLabel(Math.ceil((target - Date.now()) / 60_000))} 동안 돌아요`); return; }
     const plan = parsePomodoro(block.cond);
     showToast(plan ? `${plan.focus}분 집중 시작${plan.rounds > 1 ? ` · 1/${plan.rounds}라운드` : ''}` : `while ${block.cond || '…'}: 도는 중 · 끝나면 break`);
   } else if (action === 'break') {
@@ -386,6 +403,23 @@ function tick() {
   for (const block of running) {
     const plan = parsePomodoro(block.cond);
     const element = view === 'lab' ? main.querySelector(`.lab-block[data-id="${CSS.escape(block.id)}"]`) : null;
+    const until = untilState(block);
+    if (until) {
+      if (until.done) {
+        const finished = finishUntil(block); const undoLink = finished && completeLink(data, block.link, finished.date); freshId = block.id; persist(); chime(3);
+        const linked = undoLink ? (linkTarget(data, block.link).kind === 'routine' ? ' · 공부 기록에도 체크했어요' : ' · 목표 할 일을 체크했어요') : '';
+        showToast(`${finished.until} 됐어요 · ${minutesLabel(finished.minutes)} 했어요${linked}`, undoLink ? { label: '체크 되돌리기', run: () => { undoLink(); persist(); if (view === 'lab') keepScroll(renderLab); } } : null);
+        if (view === 'lab') keepScroll(renderLab);
+        continue;
+      }
+      if (element) {
+        element.querySelector('[data-ascii]').innerHTML = asciiBar(until.progress);
+        element.querySelector('[data-pct]').textContent = `${Math.floor(until.progress * 100)}%`;
+        element.querySelector('[data-left]').textContent = hms(until.left);
+      }
+      title ||= `${block.pausedAt ? '❚❚ ' : ''}${hms(until.left)} · ${hhmm(block.untilAt)}까지`;
+      continue;
+    }
     if (plan) {
       const state = pomodoroState(plan, elapsedSeconds(block));
       if (state.done) {

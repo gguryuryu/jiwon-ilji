@@ -129,3 +129,24 @@ test('pause한 동안은 시간이 흐르지 않고, done하면 블록은 치우
   assert.equal(block.runs.length, 2); // 기록은 그대로
   assert.equal(liveBlocks(state).length, 1); // 편집기에서는 빠진다
 });
+
+test('while 15시까지: 시각을 읽고, 그 시각까지 남은 시간을 세고, 그 시각이 되면 기록한다', async () => {
+  const { parseUntil, untilDate, untilState, finishUntil, pauseLoop, resumeLoop } = await import('../js/lab-model.js');
+  for (const [text, label] of [['15시까지', '15:00'], ['오후 3시 30분까지', '15:30'], ['15:30까지', '15:30'], ['~18:00', '18:00'], ['until 9:05', '09:05'], ['오전 12시까지', '00:00']]) assert.equal(parseUntil(text)?.label, label, text);
+  for (const text of ['15시', '3시 회의 전에', '4', '25시까지', '지하철 타는 동안']) assert.equal(parseUntil(text), null, text);
+  assert.equal(parsePomodoro('15시까지'), null); // 뽀모도로와 섞이지 않는다
+
+  const at = (h, m = 0) => new Date(2026, 9, 1, h, m);
+  assert.equal(untilDate(parseUntil('15시까지'), at(14)).getHours(), 15);
+  assert.equal(untilDate(parseUntil('15시까지'), at(16)), null); // 지난 시각은 다음 날로 넘기지 않는다
+  assert.equal(untilDate(parseUntil('3시까지'), at(14)).getHours(), 15); // 오전·오후 없이 지난 시각이면 오후로
+
+  const block = Object.assign(newLabBlock('while'), { cond: '15시까지' });
+  startLoop(block, at(14)); block.untilAt = at(15).toISOString();
+  assert.equal(Math.round(untilState(block, at(14, 30)).progress * 100), 50);
+  pauseLoop(block, at(14, 30)); resumeLoop(block, at(14, 40)); // 멈춰도 끝나는 시각은 그대로
+  assert.equal(untilState(block, at(14, 40)).left, 20 * 60);
+  assert.equal(untilState(block, at(15)).done, true);
+  const run = finishUntil(block);
+  assert.deepEqual([run.minutes, run.until, run.completed, block.runningSince], [50, '15:00', true, '']); // 멈춘 10분은 뺀다
+});
