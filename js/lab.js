@@ -12,8 +12,15 @@ const bodyLabel = block => { const call = block.link && linkCall(data, block.lin
 const hhmm = iso => { const date = new Date(iso); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
 const elapsedSeconds = block => activeSeconds(block); // 멈춰 있던 시간은 뺀다
 const hms = seconds => { const t = Math.floor(seconds); const h = Math.floor(t / 3600); const m = Math.floor(t % 3600 / 60); const pad = v => String(v).padStart(2, '0'); return h ? `${h}:${pad(m)}:${pad(t % 60)}` : `${m}:${pad(t % 60)}`; };
-// 버튼 아이콘은 글꼴 기호(▶ ❚❚ ■ ✓) 대신 CSS로 그린다: 기호마다 대체 글꼴 높이가 달라 글자 줄이 어긋나던 문제
-const icon = (name, text) => `<span class="lab-ico ${name}" aria-hidden="true"></span><span>${text}</span>`;
+// 버튼 아이콘: 얇은 선 SVG(글꼴 기호 ▶ ❚❚ ■ ✓는 대체 글꼴 높이가 달라 글자 줄이 어긋났다)
+const ICONS = {
+  play: '<path d="M2.6 1.8v6.4L8 5z" stroke-linejoin="round"/>',
+  pause: '<path d="M3.3 2v6M6.7 2v6" stroke-linecap="round"/>',
+  stop: '<rect x="2.2" y="2.2" width="5.6" height="5.6" rx="1.2"/>',
+  check: '<path d="M1.8 5.3 4 7.4 8.3 2.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  x: '<path d="M2.6 2.6l4.8 4.8M7.4 2.6 2.6 7.4" stroke-linecap="round"/>',
+};
+const icon = (name, text) => `<svg class="lab-ico" viewBox="0 0 10 10" aria-hidden="true">${ICONS[name]}</svg><span>${text}</span>`;
 let freshId = ''; // 방금 실행한 블록: 주석·출력 줄이 타자 치듯 나타난다
 
 // 칸 너비를 글자에 맞춰 늘린다(보이지 않는 글자 복사본이 칸 크기를 정한다).
@@ -163,7 +170,7 @@ function blockHtml(block, startLine, today) {
   const line = (content, extra = '') => `<div class="lab-line${extra}"><span class="lab-gutter" aria-hidden="true">${number === first ? gutterMark(block, today) : ''}</span><span class="lab-no" aria-hidden="true">${number++}</span><div class="lab-code">${content}</div></div>`;
   const placeholder = block.kind === 'while' ? '지하철 타는 동안' : '밥 먹고 나면';
   const html = [`<section class="lab-block${running ? ' running' : ''}${block.pausedAt ? ' paused' : ''}${plan ? ' pomodoro' : ''}${block.id === freshId ? ' fresh' : ''}" data-kind="${block.kind}" data-id="${esc(block.id)}" aria-label="${block.kind} 블록"><div class="lab-block-lines">`,
-    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${condHint(block)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">${icon('check', 'done')}</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
+    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${condHint(block)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">${icon('check', 'done')}</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">${icon('x', 'del')}</button>${control}</span>`),
     line(`<span class="lab-indent"></span>${bodyHtml(block, today)}`, ' lab-body-line'),
     running ? line(progressHtml(block), ' lab-progress') : '',
     comment ? line(`<span class="lab-indent"></span><span class="lab-comment">${esc(comment)}</span>`) : '',
