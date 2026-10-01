@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,12 +25,15 @@ namespace JiwonIlji
         {
             // --smoke=<결과 파일>: GitHub 자동 테스트용. 창을 띄워 화면이 뜨는지 확인하고 스스로 닫는다.
             string smoke = args.FirstOrDefault(arg => arg.StartsWith("--smoke="))?.Substring("--smoke=".Length);
+            // --fix-shortcuts: 예전 바로가기만 고치고 끝낸다(자동 테스트용).
+            if (args.Contains("--fix-shortcuts")) { Shortcuts.Refresh(); return 0; }
             using (var mutex = new Mutex(true, "local.jiwon-ilji.window", out bool first))
             {
                 // 이미 열려 있으면 새 창 대신 그 창을 앞으로 가져온다.
                 if (!first && smoke == null) { Native.FocusOtherInstance(); return 0; }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
+                if (smoke == null) Shortcuts.Refresh();
                 var form = new MainForm(smoke);
                 Application.Run(form);
                 return form.ExitCode;
@@ -383,6 +387,70 @@ namespace JiwonIlji
         const string LoadingHtml = @"<html><body style=""margin:0;height:100vh;display:grid;place-items:center;background:#151516;color:rgba(255,255,255,.46);font:14px 'Segoe UI','Malgun Gothic',sans-serif"">
 <div style=""display:grid;justify-items:center;gap:14px""><div style=""width:22px;height:22px;border:2px solid rgba(255,255,255,.12);border-top-color:rgba(255,255,255,.55);border-radius:50%;animation:s .8s linear infinite""></div>지원일지를 여는 중…</div>
 <style>@keyframes s{to{transform:rotate(1turn)}}</style></body></html>";
+    }
+
+    // 예전 바로가기(Edge 앱 창 실행기 · 예전 아이콘 파일)를 이 창으로 바꾼다. 아이콘은 이 프로그램 안의 것을 써서
+    // 윈도우가 기억해 둔 예전(흰색) 아이콘 대신 새 아이콘이 보이게 한다. windows-app.bat을 다시 실행하지 않아도 된다.
+    static class Shortcuts
+    {
+        [ComImport, Guid("00021401-0000-0000-C000-000000000046")] class ShellLink { }
+
+        [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("000214F9-0000-0000-C000-000000000046")]
+        interface IShellLinkW
+        {
+            void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder file, int size, IntPtr data, int flags);
+            void GetIDList(out IntPtr list);
+            void SetIDList(IntPtr list);
+            void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder name, int size);
+            void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string name);
+            void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder dir, int size);
+            void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string dir);
+            void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder args, int size);
+            void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string args);
+            void GetHotkey(out short key);
+            void SetHotkey(short key);
+            void GetShowCmd(out int command);
+            void SetShowCmd(int command);
+            void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size, out int index);
+            void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int index);
+            void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, int reserved);
+            void Resolve(IntPtr hwnd, int flags);
+            void SetPath([MarshalAs(UnmanagedType.LPWStr)] string file);
+        }
+
+        [DllImport("shell32.dll")] static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
+
+        public static void Refresh()
+        {
+            try
+            {
+                string exe = Application.ExecutablePath;
+                string root = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(exe), "..", ".."));
+                string launcher = Path.Combine(root, "assets", "launch-windows.vbs");
+                bool changed = false;
+                foreach (var folder in new[] { Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), Environment.GetFolderPath(Environment.SpecialFolder.Programs) })
+                {
+                    string path = Path.Combine(folder, "지원일지.lnk");
+                    if (!File.Exists(path)) continue;
+                    var link = (IShellLinkW)new ShellLink();
+                    ((IPersistFile)link).Load(path, 0);
+                    var target = new StringBuilder(1024); link.GetPath(target, target.Capacity, IntPtr.Zero, 0);
+                    var args = new StringBuilder(1024); link.GetArguments(args, args.Capacity);
+                    var icon = new StringBuilder(1024); link.GetIconLocation(icon, icon.Capacity, out _);
+                    // 이 앱 폴더의 바로가기만 고친다(다른 곳에 받아 둔 지원일지 바로가기는 건드리지 않는다).
+                    bool ours = string.Equals(target.ToString(), exe, StringComparison.OrdinalIgnoreCase) || args.ToString().IndexOf(launcher, StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (!ours || (string.Equals(target.ToString(), exe, StringComparison.OrdinalIgnoreCase) && string.Equals(icon.ToString(), exe, StringComparison.OrdinalIgnoreCase))) continue;
+                    link.SetPath(exe);
+                    link.SetArguments("");
+                    link.SetWorkingDirectory(root);
+                    link.SetIconLocation(exe, 0);
+                    ((IPersistFile)link).Save(path, true);
+                    changed = true;
+                }
+                if (changed) SHChangeNotify(0x08000000, 0, IntPtr.Zero, IntPtr.Zero); // 아이콘을 다시 그리게 알린다
+            }
+            catch { /* 바로가기를 못 고쳐도 앱은 그대로 연다 */ }
+        }
     }
 
     static class Native

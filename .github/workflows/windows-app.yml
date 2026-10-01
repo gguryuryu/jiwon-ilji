@@ -46,6 +46,22 @@ jobs:
           try { Invoke-WebRequest http://127.0.0.1:4192/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }
           if ($stillUp) { throw '창을 닫았는데 서버가 꺼지지 않았습니다' }
           Write-Host '창이 떴고, 닫자 서버도 꺼졌습니다'
+      - name: 예전 바로가기를 새 창·새 아이콘으로 고치기
+        shell: pwsh
+        run: |
+          # 전용 창이 없던 때처럼 Edge 실행기를 가리키는 예전 바로가기를 만든 뒤, 새 프로그램이 고치는지 본다.
+          Rename-Item windows/app windows/app-hidden
+          powershell -NoProfile -ExecutionPolicy Bypass -File assets/make-shortcut.ps1
+          Rename-Item windows/app-hidden windows/app
+          $link = Join-Path ([Environment]::GetFolderPath('Desktop')) '지원일지.lnk'
+          $read = { $bytes = [IO.File]::ReadAllBytes($link); [Text.Encoding]::Unicode.GetString($bytes) + [Text.Encoding]::Unicode.GetString($bytes, 1, $bytes.Length - 1) }
+          if (-not (& $read).Contains('launch-windows.vbs')) { throw '예전 바로가기를 만들지 못했습니다' }
+          $exe = (Resolve-Path 'windows/build/jiwon-ilji.exe').Path
+          $fix = Start-Process -FilePath $exe -ArgumentList '--fix-shortcuts' -PassThru -Wait
+          $text = & $read
+          if (-not $text.Contains($exe)) { throw '바로가기가 새 창을 가리키지 않습니다' }
+          if ($text.Contains('icon-transparent.ico')) { throw '바로가기 아이콘이 아직 예전 아이콘 파일입니다' }
+          Write-Host "예전 바로가기를 고쳤습니다: $exe"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-app

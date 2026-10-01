@@ -73,7 +73,8 @@ $made = @()
 foreach ($folder in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
   $path = Join-Path $folder '지원일지.lnk'
   if (Test-Path -LiteralPath $app) {
-    [JiwonIlji.Shortcut]::Save($path, $app, '', $root, (Join-Path $root 'assets\icon-transparent.ico'), '지원일지')
+    # 아이콘은 프로그램 안의 것을 쓴다(예전 아이콘 파일 경로는 윈도우가 흰색 아이콘으로 기억하고 있을 수 있다).
+    [JiwonIlji.Shortcut]::Save($path, $app, '', $root, $app, '지원일지')
     $saved = [JiwonIlji.Shortcut]::Target($path)
   } else {
     [JiwonIlji.Shortcut]::Save($path, (Join-Path $env:SystemRoot 'System32\wscript.exe'), ('"' + $launcher + '"'), $root, (Join-Path $root 'assets\icon-transparent.ico'), '지원일지')
@@ -89,3 +90,5 @@ Write-Host ''
 Write-Host '바탕화면의 지원일지 아이콘을 누르면 앱이 열리고, 창을 닫으면 꺼집니다.'
 Write-Host '시작 메뉴에서 지원일지를 우클릭 → 작업 표시줄에 고정하면 더 편해요.'
 Write-Host '이 폴더를 다른 곳으로 옮겼다면 windows-app.bat을 다시 실행해 주세요.'
+# 윈도우가 기억해 둔 아이콘 그림을 새로 그리게 한다.
+try { Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\ie4uinit.exe') -ArgumentList '-show' -WindowStyle Hidden -Wait } catch {}
