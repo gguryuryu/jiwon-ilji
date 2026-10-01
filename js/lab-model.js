@@ -1,4 +1,4 @@
-// 실험실: while·if 블록으로 적는 할 일. while은 '도는 동안' 시간을 재고, if는 실행할 때마다 기록한다.
+// 집중 루프: while·if 블록으로 적는 할 일. while은 '도는 동안' 시간을 재고, if는 실행할 때마다 기록한다.
 import { dateKey, uid } from './util.js';
 import { bookProgress, liveRoutines, recordStudy, routineOn, studyEntries } from './study-model.js';
 

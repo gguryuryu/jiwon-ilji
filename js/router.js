@@ -87,7 +87,7 @@ export function render() {
   else if (view === 'lab') renderLab();
   else if (view === 'experiences') renderExperiences();
   else if (view === 'experience-detail') renderExperienceDetail();
-  // 실험실 밖에 있어도 도는 while의 남은 시간을 창 제목에 보여 주고, 뽀모도로가 끝나면 알린다.
+  // 집중 루프 탭 밖에 있어도 도는 while의 남은 시간을 창 제목에 보여 주고, 뽀모도로가 끝나면 알린다.
   if (view !== 'lab') startTicking();
   updatePeek();
   const peekBody = main.querySelector('#peek .peek-scroll'); if (peekBody) peekBody.scrollTop = peekScroll;

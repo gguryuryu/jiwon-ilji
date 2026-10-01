@@ -2347,32 +2347,6 @@ button.brand:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* 실험 중인 탭 표시(메뉴·제목 옆 작은 Beta) */
-.nav-beta,
-.title-beta {
-  display: inline-flex;
-  align-items: center;
-  height: 17px;
-  padding: 0 6px;
-  border-radius: 5px;
-  background: color-mix(in srgb, #c6a0f6 16%, transparent);
-  color: #c6a0f6;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: .03em;
-}
-
-.nav-beta {
-  margin-left: auto;
-}
-
-.title-beta {
-  height: 22px;
-  margin-left: 12px;
-  padding: 0 8px;
-  font-size: 12.5px;
-  vertical-align: 6px;
-}
 
 /* ---------- 진행 단계 요약 ---------- */
 
@@ -5065,7 +5039,7 @@ button.grass-cell:hover {
 
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-/* ---------- 실험실: lab.py 파일 하나처럼 보이는 편집기 (바탕은 지원일지 회색, 글자 색은 Catppuccin Macchiato 원래 색) ---------- */
+/* ---------- 집중 루프: lab.py 파일 하나처럼 보이는 편집기 (바탕은 지원일지 회색, 글자 색은 Catppuccin Macchiato 원래 색) ---------- */
 /* Catppuccin 스타일 가이드대로: 키워드 Mauve · 문자열 Green · 숫자 Peach · 함수 Blue · 주석 Overlay 2 · 실행 중 Yellow · 집중 Red · 휴식 Blue · 끝낸 것 Teal · 시각까지 Sapphire */
 .lab-page {
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "D2Coding", monospace;

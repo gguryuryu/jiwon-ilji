@@ -1,4 +1,4 @@
-// 실험실: 할 일을 파이썬의 while·if처럼 적는다. 화면 전체가 lab.py 파일 하나처럼 줄 번호가 이어지고,
+// 집중 루프: 할 일을 파이썬의 while·if처럼 적는다. 화면 전체가 lab.py 파일 하나처럼 줄 번호가 이어지고,
 // while 조건에 숫자를 넣으면 뽀모도로로 돈다. 아래 OUTPUT에는 오늘 실행한 기록이 터미널처럼 쌓인다.
 import { main } from './dom.js';
 import { data, view } from './state.js';
@@ -273,7 +273,7 @@ export function renderLab() {
   }).join('');
   const runningCount = liveBlocks(data).filter(block => block.runningSince).length;
   main.className = 'database-page lab-page';
-  main.innerHTML = `<header class="page-header"><h1 class="page-title">실험실<span class="title-beta">Beta</span></h1></header>
+  main.innerHTML = `<header class="page-header"><h1 class="page-title">집중 루프</h1></header>
     <div class="lab-editor">
       <div class="lab-tabbar"><span class="lab-file"><span class="lab-file-dot" aria-hidden="true"></span>lab.py</span><span class="lab-running-count">${runningCount ? `<span class="lab-running-dot" aria-hidden="true"></span>${runningCount}개 실행 중` : ''}</span></div>
       <div class="lab-crumbs" data-crumbs>${crumbsHtml()}</div>
