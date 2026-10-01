@@ -94,11 +94,10 @@ async function loadPostingPreview() {
       }
     }
     renderDialogDates();
-    showPostingReview(result.method === 'ai' ? 'AI로 읽음' : result.method === 'job-alio' ? '잡알리오에서 읽음' : result.method === 'structured' ? '공고에서 읽음' : '페이지 제목에서 읽음');
+    showPostingReview(result.method === 'job-alio' ? '잡알리오에서 읽음' : result.method === 'structured' ? '공고에서 읽음' : '페이지 제목에서 읽음');
     const missing = [!form.elements.organization.value && '회사·기관명', !form.elements.role.value && '직무', !form.elements.deadline.value && '마감일'].filter(Boolean);
     const duplicate = data.postings.find(item => validUrl(item.url) === validUrl(result.url || url) && item.id !== form.dataset.id);
     message.textContent = missing.length ? `${missing.join('·')}만 확인해 주세요.` : '내용을 확인하고 저장해 주세요.';
-    if (result.aiError && missing.length) message.textContent += /API 키|권한|한도/.test(result.aiError) ? ' (AI 보완은 API 키 문제로 쓰지 못했어요.)' : ` (${result.aiError})`;
     if (duplicate) {
       message.innerHTML = `<span class="duplicate-note">${escapeHtml(duplicate.organization)} 공고로 이미 등록된 링크예요.</span> <button type="button" class="inline-link" data-open-posting="${escapeHtml(duplicate.id)}">기존 공고 열기</button>`;
     }

@@ -27,7 +27,7 @@ function eventButton(label, className, onClick) {
 function eventFieldsHtml(fields) {
   const missing = '<span class="missing">찾지 못함</span>';
   const row = (label, value) => `<div><dt>${label}</dt><dd>${value || missing}</dd></div>`;
-  const source = { event: '일정 제목과 설명에서 읽었어요.', link: '일정에 있는 공고 링크에서 읽었어요.', ai: 'AI로 빈칸을 채웠어요. 저장 전에 한 번 확인해 주세요.' }[fields.method] || '';
+  const source = { event: '일정 제목과 설명에서 읽었어요.', link: '일정에 있는 공고 링크에서 읽었어요.' }[fields.method] || '';
   return `<dl class="event-field-list">${row('회사·기관', escapeHtml(fields.organization))}${row('직무', escapeHtml(fields.role))}${row('접수 마감', fields.deadline ? `${escapeHtml(formatDate(fields.deadline))}${fields.deadlineTime ? ` ${escapeHtml(fields.deadlineTime)}` : ''}` : '')}${fields.employmentType ? row('고용형태', escapeHtml(fields.employmentType)) : ''}</dl><p class="event-field-source">${source}${fields.complete ? '' : ' 빈칸은 다음 화면에서 채울 수 있어요.'}</p>`;
 }
 

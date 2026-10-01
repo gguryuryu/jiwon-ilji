@@ -36,7 +36,6 @@ Git 또는 GitHub Desktop이 필요하며, 이 컴퓨터에서 앱 코드 파일
 - 처음에는 비어 있습니다. 지원 현황의 **예시 살펴보기**를 누르면 예시 공고가 들어가고, 언제든 지울 수 있습니다.
 
 ## 선택 기능
-- **AI로 공고 빈칸 채우기**: 공고 링크만으로 회사·직무·마감일을 다 못 읽을 때 OpenAI가 페이지 글을 읽어 채웁니다. 본인 OpenAI API 키가 필요하고 사용료가 들 수 있습니다. 윈도우는 `ai-key.bat`, 맥은 `ai-key.command`를 실행해 키를 넣으면 됩니다(키는 이 컴퓨터에만 저장). 키가 없어도 나머지 기능은 모두 쓸 수 있습니다.
 - **구글 캘린더 연결**: 월간 달력의 **구글 캘린더 연결**에서 캘린더의 "iCal 형식의 비공개 주소"를 넣으면, 앱이 켜져 있는 동안 몇 분마다 일정을 가져옵니다. 이 주소도 `data` 폴더에만 저장됩니다.
 
 ## 할 수 있는 일
@@ -89,7 +88,7 @@ js/study.js         공부 기록(잔디·루틴·교재 진도), 계산은 stud
 js/experiences.js   경험 정리, calendar.js·ics.js·event-dialog.js 달력, posting-dialog.js 새 공고 창
 js/util.js, model.js, ui.js, dom.js   공통 도구, 상태 규칙, 알림·움직임, 자주 쓰는 화면 요소
 지원일지.app        맥 네이티브 앱(WKWebView 창, 인텔·애플 실리콘 겸용). 소스는 mac/main.swift, 다시 만들 때는 mac/build.command
-windows-app.bat     윈도우 아이콘 바로가기 만들기. start.bat · start.command는 아이콘 없이 실행, ai-key.*는 OpenAI 키 저장
+windows-app.bat     윈도우 아이콘 바로가기 만들기. start.bat · start.command는 아이콘 없이 실행
 assets/             아이콘(icon.svg 원본, icon-transparent.ico), 윈도우 실행기(launch-windows.vbs: 서버를 --exit-when-closed로 켜고 Edge 앱 창으로 연다), 바로가기 만들기(make-shortcut.ps1)
 fonts/              Pretendard 글꼴(SIL Open Font License, fonts/OFL.txt)
 test/               자동 테스트(서버를 실제로 띄워 보는 테스트 포함)
