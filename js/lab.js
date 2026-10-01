@@ -12,6 +12,8 @@ const bodyLabel = block => { const call = block.link && linkCall(data, block.lin
 const hhmm = iso => { const date = new Date(iso); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
 const elapsedSeconds = block => activeSeconds(block); // 멈춰 있던 시간은 뺀다
 const hms = seconds => { const t = Math.floor(seconds); const h = Math.floor(t / 3600); const m = Math.floor(t % 3600 / 60); const pad = v => String(v).padStart(2, '0'); return h ? `${h}:${pad(m)}:${pad(t % 60)}` : `${m}:${pad(t % 60)}`; };
+// 버튼 아이콘은 글꼴 기호(▶ ❚❚ ■ ✓) 대신 CSS로 그린다: 기호마다 대체 글꼴 높이가 달라 글자 줄이 어긋나던 문제
+const icon = (name, text) => `<span class="lab-ico ${name}" aria-hidden="true"></span><span>${text}</span>`;
 let freshId = ''; // 방금 실행한 블록: 주석·출력 줄이 타자 치듯 나타난다
 
 // 칸 너비를 글자에 맞춰 늘린다(보이지 않는 글자 복사본이 칸 크기를 정한다).
@@ -153,15 +155,15 @@ function blockHtml(block, startLine, today) {
   const comment = running ? '' : commentFor(block, today);
   const paused = Boolean(block.pausedAt);
   const control = block.kind === 'while'
-    ? running ? `<button type="button" class="lab-run lab-pause" data-lab="${paused ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${paused ? '▶ resume' : '❚❚ pause'}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button>`
-      : `<button type="button" class="lab-run" data-lab="start" data-id="${esc(block.id)}">▶ run</button>`
-    : `<button type="button" class="lab-run" data-lab="run-if" data-id="${esc(block.id)}">▶ run</button>`;
+    ? running ? `<button type="button" class="lab-run lab-pause" data-lab="${paused ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${paused ? icon('play', 'resume') : icon('pause', 'pause')}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">${icon('stop', 'break')}</button>`
+      : `<button type="button" class="lab-run" data-lab="start" data-id="${esc(block.id)}">${icon('play', 'run')}</button>`
+    : `<button type="button" class="lab-run" data-lab="run-if" data-id="${esc(block.id)}">${icon('play', 'run')}</button>`;
   let number = startLine;
   const first = number;
   const line = (content, extra = '') => `<div class="lab-line${extra}"><span class="lab-gutter" aria-hidden="true">${number === first ? gutterMark(block, today) : ''}</span><span class="lab-no" aria-hidden="true">${number++}</span><div class="lab-code">${content}</div></div>`;
   const placeholder = block.kind === 'while' ? '지하철 타는 동안' : '밥 먹고 나면';
   const html = [`<section class="lab-block${running ? ' running' : ''}${block.pausedAt ? ' paused' : ''}${plan ? ' pomodoro' : ''}${block.id === freshId ? ' fresh' : ''}" data-kind="${block.kind}" data-id="${esc(block.id)}" aria-label="${block.kind} 블록"><div class="lab-block-lines">`,
-    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${condHint(block)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">✓ done</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
+    line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${condHint(block)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">${icon('check', 'done')}</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">del</button>${control}</span>`),
     line(`<span class="lab-indent"></span>${bodyHtml(block, today)}`, ' lab-body-line'),
     running ? line(progressHtml(block), ' lab-progress') : '',
     comment ? line(`<span class="lab-indent"></span><span class="lab-comment">${esc(comment)}</span>`) : '',
@@ -205,7 +207,7 @@ function nowHtml() {
       ${tabs}
       <div class="lab-now-code"><span class="lab-kw">while</span> <span class="lab-cond${plan || block.untilAt ? ' lab-num' : ''}">${esc(block.cond || '…')}</span><span class="lab-punct">:</span> <span class="lab-now-body">${esc(bodyLabel(block))}</span></div>
       <div class="lab-now-state"><span class="lab-now-phase" data-now-phase>${dial.phaseText}</span><span class="lab-now-detail">${detail}</span></div>
-      <div class="lab-now-actions"><button type="button" class="lab-run lab-pause" data-lab="${block.pausedAt ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${block.pausedAt ? '▶ resume' : '❚❚ pause'}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">■ break</button><span class="lab-now-since">${hhmm(block.runningSince)}부터</span></div>
+      <div class="lab-now-actions"><button type="button" class="lab-run lab-pause" data-lab="${block.pausedAt ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${block.pausedAt ? icon('play', 'resume') : icon('pause', 'pause')}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">${icon('stop', 'break')}</button><span class="lab-now-since">${hhmm(block.runningSince)}부터</span></div>
     </div>
   </section>`;
 }
@@ -256,9 +258,9 @@ function outputHtml(today) {
 export function renderLab() {
   const today = todayKey();
   let lineNumber = 1;
-  const header = `<div class="lab-line lab-meta"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span><div class="lab-code"><span class="lab-comment"># while 4: → 25분 × 4 뽀모도로</span></div></div>`;
-  const blocks = liveBlocks(data).map(block => {
-    const gap = `<div class="lab-line lab-gap"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span></div>`;
+  // 블록 사이에만 빈 줄을 둔다(첫 블록은 1번 줄부터).
+  const blocks = liveBlocks(data).map((block, index) => {
+    const gap = index ? `<div class="lab-line lab-gap"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span></div>` : '';
     const { html, lines } = blockHtml(block, lineNumber, today);
     lineNumber += lines; return gap + html;
   }).join('');
@@ -270,7 +272,7 @@ export function renderLab() {
       <div class="lab-crumbs" data-crumbs>${crumbsHtml()}</div>
       <div data-now-slot>${nowHtml()}</div>
       <div class="lab-source">
-        ${header}${blocks}
+        ${blocks}
         <div class="lab-line lab-gap"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span></div>
         <div class="lab-line lab-add"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber}</span><div class="lab-code"><button type="button" class="lab-new" data-lab="add" data-kind="while" title="시간을 재거나 집중 타이머로 공부하기">+ while</button><button type="button" class="lab-new" data-lab="add" data-kind="if" title="조건에 맞춰 공부한 일을 기록하기">+ if</button></div></div>
       </div>

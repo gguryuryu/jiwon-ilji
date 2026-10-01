@@ -5066,12 +5066,13 @@ button.grass-cell:hover {
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* ---------- 실험실: lab.py 파일 하나처럼 보이는 편집기 (바탕은 지원일지 회색, 글자 색은 Catppuccin Macchiato 원래 색) ---------- */
-/* Catppuccin 스타일 가이드대로: 키워드 Mauve · 문자열 Green · 숫자 Peach · 주석 Overlay 2 · 실행 중 Yellow · 집중 Red · 휴식 Blue · 끝낸 것 Teal */
+/* Catppuccin 스타일 가이드대로: 키워드 Mauve · 문자열 Green · 숫자 Peach · 함수 Blue · 주석 Overlay 2 · 실행 중 Yellow · 집중 Red · 휴식 Blue · 끝낸 것 Teal · 시각까지 Sapphire */
 .lab-page {
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "D2Coding", monospace;
   --lab-kw: #c6a0f6;
   --lab-str: #a6da95;
   --lab-num: #f5a97f;
+  --lab-fn: #8aadf4;
   --lab-comment: #939ab7;
   --lab-live: #eed49f;
   --lab-focus: #ed8796;
@@ -5263,7 +5264,7 @@ button.grass-cell:hover {
 .lab-cond.lab-num, .lab-num { color: var(--lab-num); }
 .lab-body { color: var(--text); }
 
-/* 할 일 줄 연결: routine.이름() · goal.목표.이름() (Catppuccin: 함수 Blue, 이름공간 Text) */
+/* 할 일 줄 연결: routine.이름() · goal.목표.이름() (함수는 --lab-fn, 이름공간은 본문 글자색) */
 .lab-body-line .lab-code { position: relative; }
 
 .lab-call {
@@ -5288,7 +5289,7 @@ button.grass-cell:hover {
 }
 
 .lab-ns { color: var(--text-2); }
-.lab-fn { color: #8aadf4; }
+.lab-fn { color: var(--lab-fn); }
 .lab-call.done .lab-fn { color: var(--lab-done); }
 .lab-call.broken { opacity: .55; }
 
@@ -5393,7 +5394,11 @@ button.grass-cell:hover {
 .lab-run,
 .lab-remove,
 .lab-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 24px;
+  line-height: 1;
   padding: 0 9px;
   border: 0;
   border-radius: 6px;
@@ -5432,6 +5437,13 @@ button.grass-cell:hover {
 .lab-block:hover .lab-remove,
 .lab-remove:focus-visible { opacity: 1; }
 .lab-remove:hover { background: var(--hover); color: var(--c-red); }
+
+/* 버튼 아이콘(CSS로 그려서 글자와 높이가 맞는다) */
+.lab-ico { flex: none; width: 7px; height: 8px; background: currentColor; }
+.lab-ico.play { clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.lab-ico.pause { background: linear-gradient(90deg, currentColor 0 35%, transparent 35% 65%, currentColor 65%); }
+.lab-ico.stop { height: 7px; border-radius: 1.5px; }
+.lab-ico.check { width: 8px; height: 4px; margin-top: -3px; border: solid currentColor; border-width: 0 0 1.5px 1.5px; background: none; transform: rotate(-45deg); }
 
 /* 도는 블록: 디버거의 '지금 실행 중인 줄'처럼 호박색 한 가지로 */
 .lab-block {

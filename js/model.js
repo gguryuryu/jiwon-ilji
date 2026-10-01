@@ -133,6 +133,13 @@ export function migrate(value) {
   for (const key of ['studyRoutines', 'studyBooks', 'studyLogs', 'labBlocks']) if (!Array.isArray(value[key])) value[key] = [];
   // 잠깐 있던 공부 기록 형식(숫자 칸·전공 목차·오답·모의고사)은 루틴·교재로 바뀌어 지운다.
   for (const key of ['studyChapters', 'studyDays', 'studyMocks']) delete value[key];
+  // 잠깐 있던 실험실 여러 줄 형식(lines)은 내용이 있는 첫 줄을 할 일 한 줄(body·link)로 되돌린다.
+  for (const block of value.labBlocks) {
+    if (!Array.isArray(block.lines)) continue;
+    const first = block.lines.find(line => line?.text?.trim() || line?.link) || block.lines[0] || {};
+    block.body ??= first.text || ''; block.link ??= first.link || null;
+    delete block.lines;
+  }
   // 사파리(맥 앱)에서 달 입력칸이 글자 칸으로 보이던 때 적힌 날짜도 형식을 맞춘다.
   for (const cert of value.certs) {
     for (const key of ['acquired', 'expires']) if (cert[key]) cert[key] = normalizeMonth(cert[key]) || cert[key];

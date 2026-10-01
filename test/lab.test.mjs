@@ -150,3 +150,12 @@ test('while 15시까지: 시각을 읽고, 그 시각까지 남은 시간을 세
   const run = finishUntil(block);
   assert.deepEqual([run.minutes, run.until, run.completed, block.runningSince], [50, '15:00', true, '']); // 멈춘 10분은 뺀다
 });
+
+test('잠깐 있던 여러 줄 형식은 내용이 있는 첫 줄을 할 일 한 줄로 되돌린다', () => {
+  const link = { type: 'routine', id: 'r' };
+  const blocks = migrate({ postings: [], experiences: [], labBlocks: [
+    { id: 'a', kind: 'while', cond: '', lines: [{ id: '1', text: '', link: null }, { id: '2', text: '빨래 개기', link }, { id: '3', text: '물', link: null }], runs: [] },
+    { id: 'b', kind: 'if', cond: '', lines: [], runs: [] },
+  ] }).labBlocks;
+  assert.deepEqual(blocks.map(block => [block.body, block.link, 'lines' in block]), [['빨래 개기', link, false], ['', null, false]]);
+});
