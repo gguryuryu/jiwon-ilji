@@ -7,12 +7,13 @@ import { data, selectedId, view } from './state.js';
 import { persist } from './store.js';
 import { escapeHtml, formatDate, icon, optionsHtml, th, todayKey, uid, validUrl } from './util.js';
 
-// 일정 칸: 날짜 + 종류 배지. 상태와 같은 말(예: '2차 면접 예정' + '2차 면접')은 되풀이하지 않고 '일정'으로 줄인다. 지난 날짜는 흐리게.
+// 일정 칸: 날짜 + 종류 배지. 상태와 같은 말(예: '2차 면접 예정' + '2차 면접')은 되풀이하지 않고 '일정'으로 줄인다.
+// 지난 날짜는 흐리게 하고, 배지에 '마감됨'·'… 지남'을 붙여 앞으로의 일정과 헷갈리지 않게 한다.
 function scheduleHtml(item, schedule) {
   if (!schedule) return '';
   const deadline = schedule.label === '접수 마감';
-  const kind = deadline ? '마감' : item.status.includes(schedule.label) ? '일정' : schedule.label;
   const past = schedule.date < todayKey();
+  const kind = deadline ? (past ? '마감됨' : '마감') : `${item.status.includes(schedule.label) ? '일정' : schedule.label}${past ? ' 지남' : ''}`;
   return `<span class="schedule${past ? ' past' : ''}"><span class="date-main">${escapeHtml(formatDate(schedule.date))}${schedule.time ? ` ${escapeHtml(schedule.time)}` : ''}</span><span class="date-kind${deadline ? '' : ' next'}">${escapeHtml(kind)}</span></span>`;
 }
 
@@ -24,12 +25,15 @@ try { postingLayout = localStorage.getItem('postingLayout') === 'board' ? 'board
 
 export const collapsed = new Set();
 
+// 관심·작성 중에서 마감이 지난 공고는 아래로 내린다. 지원할 수 있는 공고가 먼저 보이게.
 function sortedGroup(group, items) {
+  const today = todayKey();
+  const closed = item => group === 'interest' && Boolean(item.deadline) && item.deadline < today;
   return items.filter(item => groupFor(item) === group).sort((a, b) => {
     const aDate = `${nextRelevant(a)?.date || '9999-12-31'} ${nextRelevant(a)?.time || '23:59'}`;
     const bDate = `${nextRelevant(b)?.date || '9999-12-31'} ${nextRelevant(b)?.time || '23:59'}`;
     if (group === 'done') return (b.updatedAt || '').localeCompare(a.updatedAt || '');
-    return aDate.localeCompare(bDate) || a.organization.localeCompare(b.organization, 'ko');
+    return Number(closed(a)) - Number(closed(b)) || aDate.localeCompare(bDate) || a.organization.localeCompare(b.organization, 'ko');
   });
 }
 
@@ -41,14 +45,17 @@ function postingRow(item) {
   const questions = item.questions || [];
   const answered = questions.filter(question => question.answer?.trim()).length;
   const employment = item.employmentType && !employmentOptions.includes(item.employmentType) ? [...employmentOptions, item.employmentType] : employmentOptions;
-  return `<tr class="data-row${groupFor(item) === 'done' && item.status !== '최종 합격' ? ' is-done' : ''}${item.id === selectedId ? ' peeked' : ''}" data-id="${id}">
+  const done = groupFor(item) === 'done';
+  // 끝난 공고에는 '+ 작성'을 두지 않는다. 쓴 문항이 있으면 진행 정도만 보여 준다.
+  const essay = questions.length ? `<button type="button" class="essay-progress" data-action="open-essay" data-id="${id}" aria-label="${name} 자소서 ${answered}/${questions.length} 문항"><span class="progress-track"><span class="progress-fill" style="width:${Math.round(answered / questions.length * 100)}%"></span></span><span>${answered}/${questions.length}</span></button>` : done ? '' : `<button type="button" class="essay-add" data-action="open-essay" data-id="${id}" aria-label="${name} 자소서 작성">${icon('plus')}작성</button>`;
+  return `<tr class="data-row${done && item.status !== '최종 합격' ? ' is-done' : ''}${item.id === selectedId ? ' peeked' : ''}" data-id="${id}">
     <td><button type="button" class="row-title" data-action="open-posting" data-id="${id}"><span class="row-title-text">${name || '<span class="placeholder">이름 없음</span>'}</span><span class="open-hint">${icon('open')}열기</span></button></td>
     <td class="edit-cell role-cell" title="${escapeHtml(item.originalTitle || item.role)}"><button type="button" class="cell-edit" data-action="edit-role" data-id="${id}" aria-label="${name} 직무 수정">${item.role ? escapeHtml(item.role) : '<span class="placeholder">비어 있음</span>'}</button></td>
     <td><select class="${statusTag(item.status)} tag-select" data-field="status" data-id="${id}" aria-label="${name} 진행 상태">${optionsHtml(statusOptions, item.status)}</select></td>
     <td class="c-emp"><select class="plain-select${item.employmentType ? '' : ' empty'}" data-field="employmentType" data-id="${id}" aria-label="${name} 고용형태"><option value="">—</option>${optionsHtml(employment, item.employmentType)}</select></td>
     <td class="date-cell">${scheduleHtml(item, schedule) || '<span class="placeholder">—</span>'}</td>
     <td class="c-link">${link ? `<a class="icon-link row-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" title="공고 원문 열기" aria-label="${name} 공고 원문 열기">${icon('external')}</a>` : ''}</td>
-    <td class="c-essay">${questions.length ? `<button type="button" class="essay-progress" data-action="open-essay" data-id="${id}" aria-label="${name} 자소서 ${answered}/${questions.length} 문항"><span class="progress-track"><span class="progress-fill" style="width:${Math.round(answered / questions.length * 100)}%"></span></span><span>${answered}/${questions.length}</span></button>` : `<button type="button" class="essay-add" data-action="open-essay" data-id="${id}" aria-label="${name} 자소서 작성">${icon('plus')}작성</button>`}</td>
+    <td class="c-essay">${essay}</td>
   </tr>`;
 }
 

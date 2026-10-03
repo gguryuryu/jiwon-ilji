@@ -1719,7 +1719,7 @@ select option {
 
 .calendar-grid {
   --calendar-event-height: 24px;
-  height: calc(100dvh - 190px);
+  height: calc(100dvh - 230px);
   min-height: var(--calendar-min-height);
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -1775,7 +1775,7 @@ select option {
 }
 
 .calendar-grid .calendar-day.today .date-number {
-  background: #eb5757;
+  background: var(--accent);
   font-weight: 600;
   color: #fff;
   opacity: 1;
@@ -1859,13 +1859,21 @@ select option {
   color: var(--text-2);
 }
 
+/* 범례는 아래로 이어지는 달력 끝이 아니라 화면 아래에 붙여 늘 보이게 한다. */
 .calendar-legend {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
-  padding-top: 14px;
+  column-gap: 18px;
+  row-gap: 6px;
+  margin: 0 -24px -20px;
+  padding: 10px 24px 12px;
+  background: var(--bg);
+  box-shadow: 0 -1px 0 var(--border);
   color: var(--text-3);
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .legend-item {
@@ -3244,14 +3252,20 @@ button.brand:hover {
   flex-direction: row;
 }
 
-/* 지난 날은 한 단계 흐리게, 오늘 칸은 은은하게 표시 */
+/* 지난 날은 흐리게(가리키면 다시 또렷하게), 오늘 칸은 은은하게 표시 */
 
 .calendar-day.past .calendar-events {
-  opacity: .85;
+  opacity: .5;
+  transition: opacity .12s;
+}
+
+.calendar-day.past .calendar-events:hover,
+.calendar-day.past .calendar-events:focus-within {
+  opacity: .9;
 }
 
 .calendar-day.past:not(.outside) .date-number {
-  opacity: .7;
+  opacity: .5;
 }
 
 .calendar-day.today {
@@ -3284,6 +3298,39 @@ button.brand:hover {
 
 .calendar-event.personal .label {
   font-weight: 400;
+}
+
+/* 아직 지원 현황에 담지 않은 공고(구글 캘린더·잡알리오·파일)는 점선 테두리와 빈 점으로, 내 공고는 채운 칩으로 나눈다. */
+
+.calendar-event:is(.google, .alio, .external) {
+  border: 1px dashed rgba(255, 255, 255, .2);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-2);
+}
+
+.calendar-event:is(.google, .alio, .external):hover {
+  border-color: rgba(255, 255, 255, .32);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.calendar-event:is(.google, .alio, .external) .label {
+  font-weight: 400;
+}
+
+.calendar-event.google .dot,
+.legend-item.google .dot { box-shadow: inset 0 0 0 1.5px #4dab9a; }
+.calendar-event.alio .dot,
+.legend-item.alio .dot { box-shadow: inset 0 0 0 1.5px #e8835a; }
+.calendar-event.external .dot,
+.legend-item.external .dot { box-shadow: inset 0 0 0 1.5px #d9a54a; }
+
+.calendar-event:is(.google, .alio, .external) .dot,
+.legend-item:is(.google, .alio, .external) .dot {
+  width: 7px;
+  height: 7px;
+  background: transparent;
 }
 
 /* 하루 전체 일정 목록 */
@@ -3874,9 +3921,10 @@ main.view-enter > :not(.peek) {
 .gb-adjust button {
   display: grid;
   place-items: center;
-  width: 22px;
+  min-width: 22px;
   height: 20px;
-  padding: 0;
+  padding: 0 5px;
+  font-variant-numeric: tabular-nums;
   border: 1px solid var(--border);
   border-radius: 5px;
   background: transparent;
@@ -5877,7 +5925,11 @@ button.grass-cell:hover {
   main.calendar-page {
     padding: 20px 16px 24px;
   }
-  .calendar-grid { height: calc(100dvh - 240px); }
+  .calendar-grid { height: calc(100dvh - 280px); }
+  .calendar-legend {
+    margin: 0 -16px -24px;
+    padding: 10px 16px 12px;
+  }
   .calendar-head {
     margin: -20px -16px 0;
     padding: 20px 16px 0;
@@ -6040,8 +6092,139 @@ button.grass-cell:hover {
 @media (max-width: 900px) {
   .sidebar { padding-right: 48px; }
   .sidebar button.brand { padding-right: 10px; }
-  .sidebar-toggle { left: auto; right: 10px; top: 10px; }
-  .sidebar-collapsed .sidebar-toggle { right: auto; }
+  /* 위쪽 메뉴 막대가 옆으로 넘어가면 글자가 버튼 밑으로 흐려지며 들어가, 잘린 것이 아니라 더 있다는 게 보이게 한다. */
+  .sidebar-toggle { left: auto; right: 10px; top: 10px; box-shadow: 0 0 0 10px var(--sidebar); }
+  .sidebar-toggle::before { content: ''; position: absolute; top: -10px; right: calc(100% + 10px); bottom: -10px; width: 32px; background: linear-gradient(to right, transparent, var(--sidebar)); pointer-events: none; }
+  .sidebar-collapsed .sidebar-toggle { right: auto; box-shadow: none; }
+  .sidebar-collapsed .sidebar-toggle::before { content: none; }
+}
+
+/* ---------- ⋯ 메뉴 · 백업 메뉴 (details) ---------- */
+
+.more-menu,
+.side-more {
+  position: relative;
+}
+
+.more-menu > summary,
+.side-more > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.more-menu > summary::-webkit-details-marker,
+.side-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-menu[open] > summary,
+.side-more[open] > summary {
+  background: var(--active);
+  color: var(--text);
+}
+
+.menu-panel {
+  position: absolute;
+  z-index: 30;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+}
+
+.more-menu .menu-panel {
+  top: calc(100% + 4px);
+  right: 0;
+}
+
+.side-more .menu-panel {
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.menu-item.danger:hover,
+.menu-item.danger:focus-visible {
+  color: var(--danger);
+}
+
+.menu-item .icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* 위쪽 메뉴 막대(좁은 창)는 옆으로 넘어가는 영역이라 안쪽 메뉴가 잘리므로 화면 기준으로 띄운다. */
+@media (max-width: 900px) {
+  .side-more .menu-panel {
+    position: fixed;
+    top: 52px;
+    right: 56px;
+    bottom: auto;
+    left: auto;
+  }
+}
+
+/* ---------- 지난 일정: 결과 남기기 ---------- */
+
+.prop-value:has(> #past-step:not(:empty)) {
+  flex-wrap: wrap;
+}
+
+.prop-value > #past-step:not(:empty) {
+  flex-basis: 100%;
+  padding: 0 0 8px 8px;
+}
+
+.past-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.past-step > span {
+  margin-right: 2px;
+}
+
+.past-step-button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.past-step-button:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 @media (max-width: 760px) {
   .sidebar-collapsed .peek { width: 100%; }

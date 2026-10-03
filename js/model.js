@@ -28,6 +28,9 @@ export const groupFor = item => doneStatuses.has(item.status) ? 'done' : interes
 
 const statusClass = item => item.status === '최종 합격' ? 'passed' : groupFor(item);
 
+// 지난 일정의 결과를 남길 때 '통과'로 옮겨 갈 다음 진행 상태
+export const nextStageStatus = status => ({ '지원 완료': '필기 전형 예정', '서류 심사 중': '필기 전형 예정', '필기 전형 예정': '1차 면접 예정', '1차 면접 예정': '2차 면접 예정', '2차 면접 예정': '최종 결과 대기', '최종 결과 대기': '최종 합격' })[status] || '';
+
 export const nextRelevant = item => groupFor(item) === 'active' && item.nextDate ? { date: item.nextDate, time: item.nextTime || '', label: item.nextLabel || '다음 일정' } : item.deadline ? { date: item.deadline, time: item.deadlineTime || '', label: '접수 마감' } : null;
 
 // 교대 근무·기념일 같은 개인 일정과 공고 일정을 구분한다.

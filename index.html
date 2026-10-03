@@ -23,8 +23,13 @@
         <button type="button" data-view="lab" data-icon="loop"><span>집중 루프</span></button>
       </nav>
       <div class="sidebar-foot">
-        <button type="button" class="side-action" id="export-button" data-icon="download"><span>백업</span></button>
-        <button type="button" class="side-action" id="import-button" data-icon="upload"><span>복원</span></button>
+        <details class="side-more">
+          <summary class="side-action" data-icon="archive" title="백업 · 복원"><span>백업 · 복원</span></summary>
+          <div class="menu-panel" role="menu">
+            <button type="button" class="menu-item" role="menuitem" id="export-button" data-icon="download"><span>백업 파일 저장</span></button>
+            <button type="button" class="menu-item" role="menuitem" id="import-button" data-icon="upload"><span>백업에서 복원…</span></button>
+          </div>
+        </details>
         <button type="button" class="side-action" id="update-button" data-icon="refresh" disabled><span>업데이트</span></button>
         <span id="update-state" class="update-state" role="status" hidden></span>
         <input type="file" id="import-file" accept="application/json,.json" hidden>

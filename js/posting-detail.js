@@ -1,17 +1,29 @@
 // 공고 상세 페이지: 속성, 공고 메모, 자소서 문항
 import { dateFieldHtml, refreshDateField } from './date-field.js';
 import { $, main } from './dom.js';
-import { commonInterviewQuestions, employmentOptions, speakingTime, statusOptions, statusTag } from './model.js';
+import { commonInterviewQuestions, employmentOptions, groupFor, nextStageStatus, speakingTime, statusOptions, statusTag } from './model.js';
 import { detailTab, renderReviews, reviewsHtml, wireReviews } from './interview.js';
 import { navTo } from './router.js';
 import { closePeek, peekEdited } from './peek.js';
+import { closingStatus } from './postings.js';
 import { data, selectedId, view } from './state.js';
 import { persist, saveNow, scheduleSave } from './store.js';
 import { showToast } from './ui.js';
-import { autoGrow, charCount, escapeHtml, formatDate, icon, optionsHtml, propRow, validUrl } from './util.js';
+import { autoGrow, charCount, escapeHtml, formatDate, icon, optionsHtml, propRow, todayKey, validUrl } from './util.js';
+
+// 삭제처럼 자주 쓰지 않는 동작은 ⋯ 메뉴 안에 둔다.
+const moreMenu = (deleteAction, id) => `<details class="more-menu"><summary class="icon-button" aria-label="더보기" title="더보기">${icon('more')}</summary><div class="menu-panel" role="menu"><button type="button" class="menu-item danger" role="menuitem" data-action="${deleteAction}" data-id="${escapeHtml(id)}">${icon('trash')}삭제</button></div></details>`;
 
 export function topbar(backAction, backIcon, backLabel, title, deleteAction, id) {
-  return `<div class="page-topbar"><nav class="breadcrumb" aria-label="현재 위치"><button type="button" class="history-back" data-action="history-back" aria-label="뒤로 가기" title="뒤로 가기 (⌘[)">${icon('chevron-left')}</button><button type="button" data-action="${backAction}">${icon(backIcon)}${backLabel}</button><span class="crumb-sep">/</span><span class="crumb-current" id="crumb-current">${escapeHtml(title || '이름 없음')}</span></nav><div class="topbar-actions"><span class="topbar-save" data-save-state>저장됨</span><button type="button" class="ghost-button danger" data-action="${deleteAction}" data-id="${escapeHtml(id)}">${icon('trash')}삭제</button></div></div>`;
+  return `<div class="page-topbar"><nav class="breadcrumb" aria-label="현재 위치"><button type="button" class="history-back" data-action="history-back" aria-label="뒤로 가기" title="뒤로 가기 (⌘[)">${icon('chevron-left')}</button><button type="button" data-action="${backAction}">${icon(backIcon)}${backLabel}</button><span class="crumb-sep">/</span><span class="crumb-current" id="crumb-current">${escapeHtml(title || '이름 없음')}</span></nav><div class="topbar-actions"><span class="topbar-save" data-save-state>저장됨</span>${moreMenu(deleteAction, id)}</div></div>`;
+}
+
+// 진행 중 공고의 다음 일정이 지났으면, 결과를 바로 남길 수 있게 다음 상태 두 개를 버튼으로 둔다.
+function pastStepHtml(item) {
+  const next = nextStageStatus(item.status);
+  if (groupFor(item) !== 'active' || !item.nextDate || item.nextDate >= todayKey() || !next) return '';
+  const button = status => `<button type="button" class="past-step-button" data-action="past-step" data-status="${escapeHtml(status)}">${escapeHtml(status)}</button>`;
+  return `<div class="past-step"><span>지난 일정이에요. 결과를 남겨 둘까요?</span>${button(next)}${button(closingStatus(item.status))}</div>`;
 }
 
 // 캘린더에서 가져온 공고의 마감일이 캘린더를 따라가는지 보여 준다.
@@ -25,7 +37,7 @@ export function deadlineHint(item) {
 
 // 피크 위쪽 막대: 닫기, 전체 페이지로 열기, 저장 상태, 삭제
 function peekBar(item) {
-  return `<div class="peek-bar"><button type="button" class="icon-button" data-action="close-peek" aria-label="닫기" title="닫기 (Esc)">${icon('chevrons-right')}</button><button type="button" class="icon-button" data-action="expand-peek" data-id="${escapeHtml(item.id)}" aria-label="전체 페이지로 열기" title="전체 페이지로 열기">${icon('expand')}</button><span class="peek-spacer"></span><span class="topbar-save" data-save-state>저장됨</span><button type="button" class="ghost-button danger" data-action="delete-posting" data-id="${escapeHtml(item.id)}">${icon('trash')}삭제</button></div>`;
+  return `<div class="peek-bar"><button type="button" class="icon-button" data-action="close-peek" aria-label="닫기" title="닫기 (Esc)">${icon('chevrons-right')}</button><button type="button" class="icon-button" data-action="expand-peek" data-id="${escapeHtml(item.id)}" aria-label="전체 페이지로 열기" title="전체 페이지로 열기">${icon('expand')}</button><span class="peek-spacer"></span><span class="topbar-save" data-save-state>저장됨</span>${moreMenu('delete-posting', item.id)}</div>`;
 }
 
 // 전체 페이지(#/postings/…)와 지원 현황 위의 사이드 피크(#/peek/…)가 같은 내용을 그린다.
@@ -48,7 +60,7 @@ export function renderPostingDetail() {
         ${propRow('status', '진행 상태', `<select class="${statusTag(item.status)} tag-select" data-prop="status" aria-label="진행 상태">${optionsHtml(statusOptions, item.status)}</select>`)}
         ${propRow('list', '고용형태', `<select class="prop-select" data-prop="employmentType" aria-label="고용형태"><option value="">비어 있음</option>${optionsHtml(employment, item.employmentType)}</select>`)}
         ${propRow('clock', '접수 마감', `<div class="prop-inline">${dateFieldHtml(item, 'deadline', 'deadlineTime', '접수 마감')}<span id="deadline-hint">${deadlineHint(item)}</span></div>`)}
-        ${propRow('calendar', '다음 일정', `<div class="prop-inline">${dateFieldHtml(item, 'nextDate', 'nextTime', '다음 일정')}<input class="prop-input next-label" data-prop="nextLabel" value="${value('nextLabel')}" placeholder="일정 이름 (예: 1차 면접)" aria-label="다음 일정 이름" autocomplete="off"></div>`)}
+        ${propRow('calendar', '다음 일정', `<div class="prop-inline">${dateFieldHtml(item, 'nextDate', 'nextTime', '다음 일정')}<input class="prop-input next-label" data-prop="nextLabel" value="${value('nextLabel')}" placeholder="일정 이름 (예: 1차 면접)" aria-label="다음 일정 이름" autocomplete="off"></div><div id="past-step">${pastStepHtml(item)}</div>`)}
         ${propRow('link', '공고 링크', `<div class="prop-inline"><input type="url" class="prop-input" data-prop="url" value="${value('url')}" placeholder="비어 있음" aria-label="공고 링크" autocomplete="off">${link ? `<a class="icon-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" aria-label="공고 원문 열기">${icon('external')}</a>` : ''}</div>`)}
         ${propRow('text', '원문 제목', `<input class="prop-input" data-prop="originalTitle" value="${value('originalTitle')}" placeholder="비어 있음" aria-label="원문 제목" autocomplete="off">`)}
       </div>
@@ -102,6 +114,7 @@ export function wireProperties(item, container = main) {
     } else item[prop] = textLike(control) ? control.value.trim() : control.value;
     if (prop === 'status') control.className = `${statusTag(control.value)} tag-select`;
     if ((prop === 'deadline' || prop === 'deadlineTime') && $('#deadline-hint')) $('#deadline-hint').innerHTML = deadlineHint(item);
+    if ((prop === 'status' || prop === 'nextDate') && container.querySelector('#past-step')) container.querySelector('#past-step').innerHTML = pastStepHtml(item);
     const dateField = control.closest('.date-field'); if (dateField) refreshDateField(item, dateField);
     item.updatedAt = new Date().toISOString();
     saveNow(); peekEdited({ now: true });

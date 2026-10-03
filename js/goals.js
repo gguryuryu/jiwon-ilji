@@ -41,7 +41,7 @@ function doingItem(goal) {
   const sub = next
     ? `<button type="button" class="gb-next" data-action="check-task" data-id="${id}" data-task="${escapeHtml(next.id)}" title="끝냈으면 체크"><span class="check-box" aria-hidden="true"></span><span>${escapeHtml(next.text)}</span></button>`
     : total ? '<span class="gb-sub">할 일을 모두 끝냈어요</span>'
-    : `<span class="gb-sub gb-adjust"><button type="button" data-action="progress-step" data-id="${id}" data-step="-10" aria-label="10% 줄이기"${percent <= 0 ? ' disabled' : ''}>−</button><button type="button" data-action="progress-step" data-id="${id}" data-step="10" aria-label="10% 늘리기"${percent >= 100 ? ' disabled' : ''}>+</button></span>`;
+    : `<span class="gb-sub gb-adjust"><span>진행률</span><button type="button" data-action="progress-step" data-id="${id}" data-step="-10" aria-label="진행률 10% 줄이기"${percent <= 0 ? ' disabled' : ''}>−10%</button><button type="button" data-action="progress-step" data-id="${id}" data-step="10" aria-label="진행률 10% 늘리기"${percent >= 100 ? ' disabled' : ''}>+10%</button></span>`;
   return `<li class="gb-item gb-goal" role="button" tabindex="0" draggable="true" data-action="open-goal" data-id="${id}"><span class="gb-line"><span class="gb-title">${escapeHtml(goal.title) || '제목 없는 목표'}</span>${studyLink(goal)}${pieHtml(percent)}</span>${sub}</li>`;
 }
 

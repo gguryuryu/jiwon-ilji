@@ -4,7 +4,7 @@ import { closeDatePopovers, dateActions, dateTarget, handleDateAction, miniCalen
 import { $, eventDialog, main } from './dom.js';
 import { openEvent, showEventDialog } from './event-dialog.js';
 import { keywordEditorHtml, toggleExperienceKeyword } from './experiences.js';
-import { migrate, newQuestion, shownTime } from './model.js';
+import { groupFor, migrate, newQuestion, shownTime } from './model.js';
 import { handleInterviewAction, setDetailTab } from './interview.js';
 import { closePeek, peekEdited, peekOpen } from './peek.js';
 import { renderPostingDetail, renderQuestions } from './posting-detail.js';
@@ -107,6 +107,16 @@ main.addEventListener('click', async event => {
     item.deadline = item.syncedDeadline; item.deadlineTime = item.syncedDeadlineTime || ''; item.updatedAt = new Date().toISOString();
     persist(); const scroll = window.scrollY; renderPostingDetail(); window.scrollTo({ top: scroll, behavior: 'instant' }); showToast('캘린더 마감일로 되돌렸어요. 앞으로 캘린더를 따라 바뀝니다.');
   }
+  // 지난 일정의 결과 남기기: 다음 단계로 넘어가면 지난 일정은 비워 새 일정을 적게 하고, 불합격이면 기록으로 남겨 둔다.
+  if (action === 'past-step') {
+    const item = data.postings.find(posting => posting.id === selectedId); if (!item) return;
+    const before = { status: item.status, nextDate: item.nextDate, nextTime: item.nextTime, nextLabel: item.nextLabel };
+    const redraw = () => { item.updatedAt = new Date().toISOString(); persist(); const scroll = window.scrollY; if (selectedId === item.id) renderPostingDetail(); window.scrollTo({ top: scroll, behavior: 'instant' }); peekEdited({ now: true }); };
+    item.status = control.dataset.status;
+    if (groupFor(item) === 'active') Object.assign(item, { nextDate: '', nextTime: '', nextLabel: '' });
+    redraw();
+    showToast(`진행 상태를 바꿨어요 · ${item.status}`, { label: '되돌리기', run: () => { Object.assign(item, before); redraw(); } });
+  }
   if (action === 'toggle-personal') {
     togglePersonalEvents();
   }
@@ -166,6 +176,18 @@ main.addEventListener('click', async event => {
   }
   if (action === 'load-demo') { data.postings.push(...demoPostings()); await persist(); renderPostings(); showToast('예시 공고를 추가했습니다. 언제든 삭제할 수 있습니다.'); }
 });
+
+// ⋯ 메뉴·백업 메뉴(details): 바깥을 누르거나 메뉴 항목을 고르거나 Esc를 누르면 닫는다.
+const openMenus = () => document.querySelectorAll('details.more-menu[open], details.side-more[open]');
+document.addEventListener('click', event => {
+  openMenus().forEach(menu => { if (!menu.contains(event.target) || event.target.closest('.menu-item')) menu.open = false; });
+});
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  const menus = openMenus(); if (!menus.length) return;
+  event.preventDefault();
+  menus.forEach(menu => { menu.open = false; menu.querySelector('summary').focus(); });
+}, true);
 
 document.addEventListener('keydown', event => {
   // '/' 로 검색창에 바로 들어간다.
