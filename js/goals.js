@@ -168,10 +168,24 @@ function checkTask(goal, taskId) {
   const { percent } = goalProgress(goal);
   updatePie(item, percent);
   item?.querySelector('.gb-next')?.classList.add('checked');
-  setTimeout(() => { if (!goalDialog?.open) refreshGoals(); }, reducedMotion() ? 0 : 420);
+  // 원이 다 차오른 뒤, 목표 보드를 통째로 다시 그리지 않고 이 목표의 '다음 할 일' 줄만 부드럽게 바꾼다.
+  setTimeout(() => { if (!goalDialog?.open) swapNextTask(goal); }, reducedMotion() ? 0 : 560);
   const undo = { label: '되돌리기', run: () => { task.done = false; touch(goal); persist(); refreshGoals(); } };
   if (percent >= 100) showToast('할 일을 모두 끝냈어요. 목표를 완료로 옮길까요?', [{ label: '완료로 옮기기', run: () => finishGoal(goal) }, undo]);
   else showToast(`‘${task.text}’ 끝!`, undo);
+}
+
+function swapNextTask(goal) {
+  const item = main.querySelector(`.gb-goal[data-id="${CSS.escape(goal.id)}"]`);
+  const template = document.createElement('template'); template.innerHTML = doingItem(goal).trim();
+  const fresh = template.content.firstElementChild;
+  const oldSub = item?.querySelector(':scope > .gb-next, :scope > .gb-sub'); const newSub = fresh.querySelector(':scope > .gb-next, :scope > .gb-sub');
+  if (!item || goal.status !== 'doing') return refreshGoals();
+  if (!oldSub || !newSub || reducedMotion()) { item.replaceWith(fresh); return; }
+  oldSub.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-3px)' }], { duration: 140, easing: 'ease-in', fill: 'forwards' }).finished.then(() => {
+    oldSub.replaceWith(newSub);
+    newSub.animate([{ opacity: 0, transform: 'translateY(3px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  });
 }
 
 // ---------- 목표 창 ----------

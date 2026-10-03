@@ -1,5 +1,5 @@
 // 시작점: 공통 이벤트를 연결하고 데이터를 불러와 첫 화면을 그린다.
-import { allEvents, calendarState, eventClass, eventKindLabel, eventShort, openCalendarDialog, renderCalendar, showThisMonth, stepMonth, syncGoogleCalendar, togglePersonalEvents } from './calendar.js';
+import { allEvents, calendarState, eventClass, eventKindLabel, eventShort, openCalendarDialog, placeHead, renderCalendar, showThisMonth, stepMonth, syncGoogleCalendar, togglePersonalEvents } from './calendar.js';
 import { closeDatePopovers, dateActions, dateTarget, handleDateAction, miniCalendarHtml } from './date-field.js';
 import { $, eventDialog, main } from './dom.js';
 import { openEvent, showEventDialog } from './event-dialog.js';
@@ -13,26 +13,95 @@ import { boardColumns, closingStatus, collapsed, demoPostings, editRoleCell, fil
 import { navTo, render, routeFrom, routeHash } from './router.js';
 import { data, selectedId, setData, setRoute, view } from './state.js';
 import { persist, refreshFromServer, saveCurrentEditor, startFromServer } from './store.js';
-import { animateReorder, flushPending, reducedMotion, setSaveState, showToast } from './ui.js';
+import { animateReorder, flushPending, reducedMotion, setSaveState, showToast, syncTabIndicators } from './ui.js';
 import { autoGrow, dateKey, escapeHtml, formatDateLong, icon, todayKey, uid } from './util.js';
 import { setupUpdateButton } from './update.js';
 import { alioState, openAlioDialog, syncAlio } from './alio.js';
 
 const sidebarToggle = $('#sidebar-toggle');
 const sidebar = $('#sidebar');
+const sidebarCollapsed = () => document.documentElement.classList.contains('sidebar-collapsed');
+// 숨긴 사이드바도 화면 왼쪽 밖에 그려 두고, 보일 때만 CSS 전환으로 밀어 넣는다. 도중에 방향이 바뀌어도 끊기지 않는다.
 function setSidebarCollapsed(collapsed, { save = false } = {}) {
+  document.documentElement.classList.remove('sidebar-floating');
   document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
-  sidebar.hidden = collapsed;
   sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
-  const label = collapsed ? '사이드바 보이기' : '사이드바 숨기기';
+  const label = collapsed ? '사이드바 고정' : '사이드바 숨기기';
   sidebarToggle.setAttribute('aria-label', label);
   sidebarToggle.title = label;
+  // 좁은 창에서는 위쪽 메뉴 막대가 생기고 없어지므로 달력 제목 줄이 붙는 높이를 다시 잰다.
+  placeHead();
   if (save) {
     try { localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); } catch { /* 현재 창에서는 계속 사용할 수 있다. */ }
   }
 }
+
+// 숨긴 사이드바 자동으로 보이기: 왼쪽 끝에 마우스를 대면 떠오르고, 벗어나면 잠깐 뒤 다시 숨는다.
+// 넓은 창에서 마우스로 쓸 때만. 좁은 창은 위쪽 메뉴 막대라 해당 없다.
+const canFloat = () => sidebarCollapsed() && window.matchMedia('(hover: hover) and (min-width: 901px)').matches;
+let hideTimer = 0;
+const setFloating = floating => document.documentElement.classList.toggle('sidebar-floating', floating);
+const cancelHide = () => { clearTimeout(hideTimer); hideTimer = 0; };
+// 버튼으로 막 숨겼을 때는 마우스가 아직 그 자리에 있으므로, 사이드바 밖으로 한 번 나가기 전까지 다시 띄우지 않는다.
+let justCollapsed = false;
+function showFloatingSidebar() { cancelHide(); if (canFloat() && !justCollapsed) setFloating(true); }
+// 마우스가 사이드바·버튼 위에 있거나, 키보드 포커스가 안에 있거나, 백업 메뉴가 열려 있으면 숨기지 않는다.
+// (마우스로 누른 메뉴 버튼에 남는 포커스는 치지 않는다.)
+const keepOpen = () => sidebar.matches(':hover') || sidebarToggle.matches(':hover, :focus-visible') || Boolean(sidebar.querySelector(':focus-visible, details[open]'));
+function scheduleHide() {
+  if (hideTimer) return;
+  hideTimer = setTimeout(() => { hideTimer = 0; if (!keepOpen()) setFloating(false); }, 300);
+}
+document.addEventListener('mousemove', event => {
+  if (justCollapsed && event.clientX > 208 + 16) justCollapsed = false;
+  if (!canFloat()) return;
+  // 왼쪽 끝에 닿는 건 일부러 여는 것이므로, 막 숨긴 직후라도 띄운다.
+  if (event.clientX <= 10) { justCollapsed = false; showFloatingSidebar(); }
+  // 사이드바 오른쪽으로 벗어나면 숨긴다(빠르게 움직여 mouseleave를 놓치는 경우 대비).
+  else if (document.documentElement.classList.contains('sidebar-floating') && event.clientX > sidebar.offsetWidth + 16) scheduleHide();
+});
+sidebarToggle.addEventListener('mouseenter', showFloatingSidebar);
+sidebarToggle.addEventListener('focus', () => { if (sidebarToggle.matches(':focus-visible')) showFloatingSidebar(); });
+sidebar.addEventListener('mouseenter', showFloatingSidebar);
+for (const element of [sidebar, sidebarToggle]) { element.addEventListener('mouseleave', scheduleHide); element.addEventListener('focusout', scheduleHide); }
+document.documentElement.addEventListener('mouseleave', () => { justCollapsed = false; scheduleHide(); });
+
 try { setSidebarCollapsed(localStorage.getItem('sidebarCollapsed') === '1'); } catch { setSidebarCollapsed(false); }
-sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!sidebar.hidden, { save: true }));
+// 처음 그릴 때는 전환 없이 제자리에 두고, 그 뒤부터 움직임을 켠다.
+requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.add('sidebar-ready')));
+sidebarToggle.addEventListener('click', () => { justCollapsed = !sidebarCollapsed(); setSidebarCollapsed(!sidebarCollapsed(), { save: true }); });
+
+// 화면 밝기: 누를 때마다 어둡게 → 밝게 → 시스템 설정 따름 순서로 바꾼다. 처음 적용은 index.html 머리에서 한다.
+const themeButton = $('#theme-button');
+const themeModes = { dark: ['moon', '어두운 화면'], light: ['sun', '밝은 화면'], system: ['monitor', '시스템 설정 따름'] };
+const systemLight = window.matchMedia('(prefers-color-scheme: light)');
+let themeMode = 'dark';
+try { themeMode = themeModes[localStorage.getItem('theme')] ? localStorage.getItem('theme') : 'dark'; } catch { /* 어두운 화면 */ }
+function applyTheme() {
+  document.documentElement.dataset.theme = themeMode === 'light' || (themeMode === 'system' && systemLight.matches) ? 'light' : 'dark';
+  const [iconName, label] = themeModes[themeMode];
+  const next = themeModes[{ dark: 'light', light: 'system', system: 'dark' }[themeMode]][1];
+  themeButton.innerHTML = `${icon(iconName)}<span>${label}</span>`;
+  themeButton.title = `화면 밝기 · 누르면 ${next}`;
+  themeButton.setAttribute('aria-label', `화면 밝기: ${label}. 누르면 ${next}`);
+}
+themeButton.addEventListener('click', () => {
+  themeMode = { dark: 'light', light: 'system', system: 'dark' }[themeMode];
+  try { localStorage.setItem('theme', themeMode); } catch { /* 이번 화면에서만 적용된다. */ }
+  // 바뀌는 순간에는 모든 색 전환을 잠깐 꺼서, 요소마다 따로 물드는 어수선함 없이 한 번에 바뀌게 한다.
+  document.documentElement.classList.add('theme-switching');
+  applyTheme();
+  requestAnimationFrame(() => requestAnimationFrame(() => document.documentElement.classList.remove('theme-switching')));
+});
+systemLight.addEventListener('change', () => { if (themeMode === 'system') applyTheme(); });
+applyTheme();
+
+// 탭 줄이 새로 그려지거나 고른 탭이 바뀌면 밑줄 자리를 맞춘다.
+let tabFrame = 0;
+const queueTabSync = () => { if (!tabFrame) tabFrame = requestAnimationFrame(() => { tabFrame = 0; syncTabIndicators(); }); };
+new MutationObserver(records => { if (records.some(record => record.type === 'childList' || record.target.classList?.contains('view-tab'))) queueTabSync(); }).observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+window.addEventListener('resize', queueTabSync);
+document.fonts?.ready.then(queueTabSync);
 
 main.addEventListener('focusout', flushPending);
 

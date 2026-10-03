@@ -5,6 +5,7 @@ import { employmentOptions, essayToQuestions, groupFor, interestStatuses, nextRe
 import { goalStripHtml } from './goals.js';
 import { data, selectedId, view } from './state.js';
 import { persist } from './store.js';
+import { reducedMotion } from './ui.js';
 import { escapeHtml, formatDate, icon, optionsHtml, th, todayKey, uid, validUrl } from './util.js';
 
 // 일정 칸: 날짜 + 종류 배지. 상태와 같은 말(예: '2차 면접 예정' + '2차 면접')은 되풀이하지 않고 '일정'으로 줄인다.
@@ -138,6 +139,8 @@ export function setPostingLayout(layout) {
   postingLayout = layout;
   try { localStorage.setItem('postingLayout', postingLayout); } catch { /* 이번 화면에서만 적용된다. */ }
   renderPostings();
+  // 표와 보드가 툭 바뀌지 않게 짧게 겹쳐 나타낸다.
+  if (!reducedMotion()) main.querySelector('#posting-board, .table-scroll')?.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2, .8, .2, 1)' });
 }
 
 const searchedPostings = () => {

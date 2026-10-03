@@ -107,7 +107,9 @@ function monthHtml(key, map) {
     const date = new Date(year, month, index - offset + 1);
     if (date.getMonth() !== month) { cells += `<div class="calendar-day outside${index >= count - 7 ? ' last-week' : ''}" aria-hidden="true"></div>`; continue; }
     const dayKey = `${key}-${String(date.getDate()).padStart(2, '0')}`;
-    const events = map.get(dayKey) || [];
+    // 내 공고(지원 현황)를 위에 모아, 일정이 많은 날에도 '더보기' 안에 숨지 않게 한다.
+    const all = map.get(dayKey) || [];
+    const events = [...all.filter(event => event.source === 'local'), ...all.filter(event => event.source !== 'local')];
     const week = weeks[Math.floor(index / 7)];
     week.visible = Math.max(week.visible, Math.min(events.length, 4));
     week.more ||= events.length > 4;
@@ -172,7 +174,7 @@ function stickyTop() {
   return rect.width > rect.height * 2 ? rect.height : 0;
 }
 
-const placeHead = () => { const head = main.querySelector('.calendar-head'); if (head) head.style.top = `${stickyTop()}px`; };
+export const placeHead = () => { const head = main.querySelector('.calendar-head'); if (head) head.style.top = `${stickyTop()}px`; };
 
 window.addEventListener('resize', () => { if (view === 'calendar') placeHead(); });
 

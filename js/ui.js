@@ -24,6 +24,25 @@ export function animateReorder(update, movedId = null) {
   }
 }
 
+// 탭 밑줄: 고른 탭으로 밑줄이 미끄러져 간다. 탭 줄을 통째로 다시 그려도(표↔보드 등) 이전 자리에서 출발하도록
+// 탭 줄 이름(aria-label)마다 마지막 위치를 기억한다.
+const lastIndicator = new Map();
+export function syncTabIndicators(root = main) {
+  for (const tabs of root.querySelectorAll('.view-tabs')) {
+    const active = tabs.querySelector('.view-tab.active'); if (!active || !active.offsetWidth) continue;
+    const key = tabs.getAttribute('aria-label') || ''; const x = active.offsetLeft; const w = active.offsetWidth;
+    const set = (left, width) => { tabs.style.setProperty('--ind-x', `${left}px`); tabs.style.setProperty('--ind-w', `${width}px`); };
+    if (!tabs.classList.contains('has-indicator')) {
+      const previous = lastIndicator.get(key);
+      set(previous?.x ?? x, previous?.w ?? w);
+      tabs.classList.add('has-indicator');
+      if (previous && !reducedMotion()) { void tabs.offsetWidth; tabs.classList.add('ind-animate'); }
+    } else if (!tabs.classList.contains('ind-animate') && !reducedMotion()) tabs.classList.add('ind-animate');
+    set(x, w);
+    lastIndicator.set(key, { x, w });
+  }
+}
+
 // action을 주면 '되돌리기' 같은 버튼이 붙고 조금 더 오래 보인다. 버튼이 여럿이면 배열로 준다.
 export const showToast = (message, action = null) => {
   const toast = $('#toast');

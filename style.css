@@ -15,17 +15,26 @@
   --surface: #1d1d20;
   --surface-2: #242427;
   --elevated: #2b2b2f;
-  --hover: rgba(255, 255, 255, .05);
-  --active: rgba(255, 255, 255, .085);
-  --border: rgba(255, 255, 255, .07);
-  --border-strong: rgba(255, 255, 255, .13);
-  --text: rgba(255, 255, 255, .93);
-  --text-2: rgba(255, 255, 255, .66);
-  --text-3: rgba(255, 255, 255, .44);
+  --hover: rgb(var(--fg) / .05);
+  --active: rgb(var(--fg) / .085);
+  --border: rgb(var(--fg) / .07);
+  --border-strong: rgb(var(--fg) / .13);
+  --text: rgb(var(--fg) / .93);
+  --text-2: rgb(var(--fg) / .66);
+  --text-3: rgb(var(--fg) / .44);
   --accent: #3b82f6;
   --accent-hover: #5591f7;
   --accent-soft: rgba(59, 130, 246, .26);
   --danger: #ff7b72;
+  /* 밝은 화면에서 바뀌는 값: 반투명 글자·선의 바탕색, 그림자 세기, 배지 글자 섞는 색 */
+  --fg: 255 255 255;
+  --shade: 1;
+  --tag-ink: #fff;
+  --tag-mix: 40%;
+  --accent-text: #6ea2f8;
+  --warning: #e7b35a;
+  --sunday: #e88c84;
+  --saturday: #8ab4ea;
   --tag-gray: #3b3b3b;
   --tag-brown: #5c3b2c;
   --tag-orange: #7d4a1f;
@@ -49,7 +58,7 @@
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --radius: 8px;
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.5;
   background: var(--bg);
   color: var(--text);
@@ -57,6 +66,55 @@
   font-feature-settings: "tnum" 0;
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+/* ---------- 밝은 화면 ----------
+   위 어두운 값과 같은 이름을 밝은 값으로 바꾼다. 반투명 글자·선은 --fg(검정 쪽)를 바탕으로 같은 투명도를 쓴다. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --sidebar: #f7f7f5;
+  --surface: #fafaf9;
+  --surface-2: #f3f3f1;
+  --elevated: #ffffff;
+  --fg: 28 28 32;
+  --shade: .32;
+  --hover: rgb(var(--fg) / .045);
+  --active: rgb(var(--fg) / .075);
+  --border: rgb(var(--fg) / .09);
+  --border-strong: rgb(var(--fg) / .16);
+  --text: rgb(var(--fg) / .92);
+  --text-2: rgb(var(--fg) / .66);
+  --text-3: rgb(var(--fg) / .46);
+  --accent: #2f74e8;
+  --accent-hover: #2563d6;
+  --accent-soft: rgba(47, 116, 232, .18);
+  --accent-text: #2563d6;
+  --danger: #d4443a;
+  --warning: #a8740f;
+  --sunday: #d2493d;
+  --saturday: #2f6fd0;
+  --tag-ink: #000;
+  --tag-mix: 68%;
+  --tag-gray: #ececea;
+  --tag-brown: #f1e6de;
+  --tag-orange: #fbe7d6;
+  --tag-yellow: #f8eed2;
+  --tag-green: #dff0e5;
+  --tag-blue: #dde9fb;
+  --tag-purple: #ece3f8;
+  --tag-pink: #f8e1ec;
+  --tag-red: #fae2df;
+  --c-gray: #8a8a8a;
+  --c-brown: #9a6b4f;
+  --c-orange: #d0772f;
+  --c-yellow: #c08f1e;
+  --c-green: #2f9a63;
+  --c-blue: #3b7fdc;
+  --c-purple: #8461d6;
+  --c-pink: #c9518a;
+  --c-red: #d2493d;
+  --c-teal: #2a9a90;
 }
 
 * {
@@ -132,7 +190,7 @@ textarea:focus-visible {
   flex-direction: column;
   padding: 12px 8px;
   background: var(--sidebar);
-  border-right: 1px solid rgba(255, 255, 255, .05);
+  border-right: 1px solid rgb(var(--fg) / .05);
 }
 
 .brand {
@@ -153,7 +211,7 @@ textarea:focus-visible {
   height: 24px;
   border-radius: 7px;
   background: #1c1c1e;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .13);
+  box-shadow: inset 0 0 0 1px rgb(var(--fg) / .13);
   color: #f2f2f2;
 }
 
@@ -197,10 +255,10 @@ textarea:focus-visible {
 }
 
 .primary-nav button.active {
-  background: rgba(255, 255, 255, .075);
+  background: rgb(var(--fg) / .075);
   color: var(--text);
   font-weight: 500;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+  box-shadow: inset 0 0 0 1px rgb(var(--fg) / .04);
 }
 
 .sidebar-foot {
@@ -227,21 +285,22 @@ textarea:focus-visible {
   color: var(--text-3);
 }
 
+/* 사이드바를 숨겨도 표·카드가 너무 퍼지지 않게, 본문은 읽기 좋은 폭까지만 넓히고 가운데에 둔다. */
 main {
   width: 100%;
-  max-width: 1600px;
+  max-width: 1240px;
   margin: 0 auto;
-  padding: 32px clamp(24px, 3vw, 48px) 64px;
+  padding: clamp(44px, 6.5vh, 72px) clamp(24px, 3vw, 48px) 64px;
   outline: none;
 }
 
 main.detail-page {
   max-width: 920px;
-  padding-top: 20px;
+  padding-top: clamp(24px, 4vh, 40px);
 }
 
 main.calendar-page {
-  max-width: none;
+  max-width: 1440px;
   padding: 24px 24px 20px;
 }
 
@@ -270,7 +329,7 @@ main.calendar-page {
   background: var(--accent);
   color: #fff;
   font-weight: 600;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), 0 1px 2px rgba(0, 0, 0, .35);
+  box-shadow: inset 0 1px 0 rgb(var(--fg) / .16), 0 1px 2px rgb(0 0 0 / calc(.35 * var(--shade)));
 }
 
 .primary-button:hover {
@@ -375,10 +434,26 @@ main.calendar-page {
 }
 
 .view-tabs {
+  position: relative;
   display: flex;
   align-self: stretch;
   gap: 4px;
 }
+
+/* 탭 밑줄 하나를 고른 탭 아래로 미끄러뜨린다(자리는 JS가 --ind-x, --ind-w로 알려 준다). */
+.view-tabs.has-indicator .view-tab.active { border-bottom-color: transparent; }
+.view-tabs.has-indicator::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: var(--ind-w);
+  height: 2px;
+  background: var(--text);
+  transform: translateX(var(--ind-x));
+  pointer-events: none;
+}
+.view-tabs.ind-animate::after { transition: transform .26s var(--ease-out), width .26s var(--ease-out); }
 
 .view-tab {
   display: inline-flex;
@@ -470,7 +545,7 @@ main.calendar-page {
   min-width: 0;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 14.5px;
+  font-size: 15px;
 }
 
 .data-table th {
@@ -514,7 +589,7 @@ main.calendar-page {
 }
 
 .data-table tr.data-row:hover td {
-  background: rgba(255, 255, 255, .035);
+  background: rgb(var(--fg) / .035);
 }
 
 .row-title {
@@ -612,7 +687,7 @@ main.calendar-page {
   border-radius: 6px;
   background: radial-gradient(circle at 10px 50%, var(--c) 0 3px, transparent 3.6px), color-mix(in srgb, var(--c) 15%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 18%, transparent);
-  color: color-mix(in srgb, var(--c) 40%, #fff);
+  color: color-mix(in srgb, var(--c) var(--tag-mix), var(--tag-ink));
   font-size: 12.5px;
   font-weight: 500;
   line-height: 1;
@@ -691,7 +766,7 @@ main.calendar-page {
 }
 
 .plain-select:hover {
-  color: #fff;
+  color: var(--text);
 }
 
 select option {
@@ -809,7 +884,7 @@ select option {
   border: 0;
   border-radius: 4px;
   background: var(--tag-gray);
-  color: rgba(255, 255, 255, .86);
+  color: rgb(var(--fg) / .86);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -871,7 +946,7 @@ select option {
   width: min(660px, calc(100vw - 208px - 80px));
   border-left: 1px solid var(--border);
   background: var(--bg);
-  box-shadow: -28px 0 56px -16px rgba(0, 0, 0, .55), -1px 0 0 rgba(0, 0, 0, .4);
+  box-shadow: -28px 0 56px -16px rgb(0 0 0 / calc(.55 * var(--shade))), -1px 0 0 rgb(0 0 0 / calc(.4 * var(--shade)));
 }
 
 .peek-bar {
@@ -1177,7 +1252,7 @@ select option {
   padding: 0 3px 0 7px;
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, .88);
+  color: rgb(var(--fg) / .88);
 }
 
 .chip-remove {
@@ -1377,7 +1452,7 @@ select option {
 .experience-chip button {
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, .86);
+  color: rgb(var(--fg) / .86);
   padding: 0 3px 0 8px;
 }
 
@@ -1548,7 +1623,7 @@ select option {
 
 .review .question-index {
   background: color-mix(in srgb, var(--c-green) 18%, transparent);
-  color: color-mix(in srgb, var(--c-green) 60%, #fff);
+  color: color-mix(in srgb, var(--c-green) 60%, var(--tag-ink));
 }
 
 .review-field {
@@ -1727,7 +1802,7 @@ select option {
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
   border-radius: 0;
-  border-color: rgba(255, 255, 255, .06);
+  border-color: rgb(var(--fg) / .06);
 }
 
 .calendar-day {
@@ -1736,11 +1811,11 @@ select option {
   padding: 3px 4px 5px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  border-color: rgba(255, 255, 255, .06);
+  border-color: rgb(var(--fg) / .06);
 }
 
 .calendar-day.outside {
-  background: rgba(255, 255, 255, .018);
+  background: rgb(var(--fg) / .018);
 }
 
 .date-line {
@@ -1886,11 +1961,11 @@ select option {
 
 dialog {
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, .1);
+  border: 1px solid rgb(var(--fg) / .1);
   border-radius: 14px;
   background: var(--elevated);
   color: var(--text);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .4);
+  box-shadow: 0 30px 80px rgb(0 0 0 / calc(.6 * var(--shade))), 0 0 0 1px rgb(0 0 0 / calc(.4 * var(--shade)));
   opacity: 0;
   transform: translateY(8px) scale(.97);
   transition: opacity .18s ease, transform .2s cubic-bezier(.2, .8, .2, 1), overlay .2s allow-discrete, display .2s allow-discrete;
@@ -1977,7 +2052,7 @@ dialog::backdrop {
   padding: 0 11px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, .035);
+  background: rgb(var(--fg) / .035);
   color: var(--text);
   font-size: 14px;
   transition: border-color .12s, box-shadow .12s;
@@ -2242,10 +2317,10 @@ dialog::backdrop {
   padding: 10px 16px;
   border: 1px solid var(--border-strong);
   border-radius: 10px;
-  background: #2b2b2f;
+  background: var(--elevated);
   color: var(--text);
   font-size: 14px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  box-shadow: 0 12px 32px rgb(0 0 0 / calc(.45 * var(--shade)));
   opacity: 0;
   transform: translate(-50%, 6px);
   pointer-events: none;
@@ -2323,7 +2398,7 @@ dialog::backdrop {
 }
 
 .duplicate-note {
-  color: #e7b35a;
+  color: var(--warning);
 }
 
 .inline-link {
@@ -2349,7 +2424,7 @@ dialog::backdrop {
 }
 
 button.prop-hint {
-  color: #e7b35a;
+  color: var(--warning);
 }
 
 button.prop-hint:hover {
@@ -2486,7 +2561,7 @@ button.brand:hover {
   min-width: 0;
   padding: 6px;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--c, #fff) 4%, transparent);
+  background: color-mix(in srgb, var(--c, rgb(var(--fg))) 4%, transparent);
   transition: background-color .15s, box-shadow .15s;
 }
 
@@ -2529,7 +2604,7 @@ button.brand:hover {
   padding: 10px 11px;
   border-radius: 10px;
   background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgba(0, 0, 0, .25);
+  box-shadow: inset 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / calc(.25 * var(--shade)));
   cursor: pointer;
   transition: background-color .12s, transform .12s, box-shadow .12s;
 }
@@ -2656,7 +2731,7 @@ button.brand:hover {
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--surface-2);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
+  box-shadow: 0 16px 40px rgb(0 0 0 / calc(.5 * var(--shade)));
   width: 272px;
   gap: 12px;
   grid-template-columns: minmax(0, 1fr);
@@ -2675,7 +2750,7 @@ button.brand:hover {
   padding: 0 10px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, .035);
+  background: rgb(var(--fg) / .035);
   color: var(--text);
   font-size: 14px;
   width: 100%;
@@ -2762,7 +2837,7 @@ button.brand:hover {
 }
 
 .mini-weekday:first-child {
-  color: #d9776f;
+  color: var(--sunday);
 }
 
 .mini-day {
@@ -2789,7 +2864,7 @@ button.brand:hover {
 }
 
 .mini-day.today {
-  color: #ff8a80;
+  color: var(--accent-text);
   font-weight: 700;
 }
 
@@ -2923,9 +2998,9 @@ button.brand:hover {
 }
 
 .date-kind.next {
-  border-color: rgba(157, 120, 214, .5);
-  background: rgba(75, 48, 104, .45);
-  color: #d6c2f2;
+  border-color: color-mix(in srgb, var(--c-purple) 50%, transparent);
+  background: color-mix(in srgb, var(--c-purple) 20%, transparent);
+  color: color-mix(in srgb, var(--c-purple) var(--tag-mix), var(--tag-ink));
 }
 
 .data-table thead th {
@@ -2979,14 +3054,14 @@ button.brand:hover {
   padding: 0 10px;
   border: 0;
   border-radius: 6px;
-  background: rgba(255, 255, 255, .1);
-  color: #fff;
+  background: rgb(var(--fg) / .1);
+  color: var(--text);
   font-size: 13px;
   font-weight: 600;
 }
 
 .toast-action:hover {
-  background: rgba(255, 255, 255, .18);
+  background: rgb(var(--fg) / .18);
 }
 
 .board-empty {
@@ -3064,7 +3139,7 @@ button.brand:hover {
   padding: 0 11px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, .035);
+  background: rgb(var(--fg) / .035);
 }
 
 .dialog-date .date-display:hover {
@@ -3238,12 +3313,12 @@ button.brand:hover {
 
 .calendar-weekdays .sunday,
 .calendar-day.sunday .date-number {
-  color: #e88c84;
+  color: var(--sunday);
 }
 
 .calendar-weekdays .saturday,
 .calendar-day.saturday .date-number {
-  color: #8ab4ea;
+  color: var(--saturday);
 }
 
 .calendar-day .date-line {
@@ -3269,7 +3344,7 @@ button.brand:hover {
 }
 
 .calendar-day.today {
-  background: rgba(255, 255, 255, .035);
+  background: rgb(var(--fg) / .035);
 }
 
 /* 일정 칩: 회사 이름이 먼저, 시각은 오른쪽에 작게. 점 색으로 종류를 나눈다. */
@@ -3292,45 +3367,30 @@ button.brand:hover {
 }
 
 .calendar-event.next {
-  background: rgba(75, 48, 104, .35);
-  box-shadow: inset 0 0 0 1px rgba(157, 120, 214, .35);
+  background: color-mix(in srgb, var(--c-purple) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-purple) 35%, transparent);
 }
 
 .calendar-event.personal .label {
   font-weight: 400;
 }
 
-/* 아직 지원 현황에 담지 않은 공고(구글 캘린더·잡알리오·파일)는 점선 테두리와 빈 점으로, 내 공고는 채운 칩으로 나눈다. */
+/* 아직 지원 현황에 담지 않은 공고(구글 캘린더·잡알리오·파일)는 배경 없이 흐린 글자로, 내 공고는 채운 칩으로 나눈다.
+   점 색은 출처 색 그대로 두어, 회색 점의 개인 일정과 구분된다. */
 
 .calendar-event:is(.google, .alio, .external) {
-  border: 1px dashed rgba(255, 255, 255, .2);
   background: transparent;
   box-shadow: none;
-  color: var(--text-2);
+  color: rgb(var(--fg) / .55);
 }
 
 .calendar-event:is(.google, .alio, .external):hover {
-  border-color: rgba(255, 255, 255, .32);
   background: var(--hover);
   color: var(--text);
 }
 
 .calendar-event:is(.google, .alio, .external) .label {
   font-weight: 400;
-}
-
-.calendar-event.google .dot,
-.legend-item.google .dot { box-shadow: inset 0 0 0 1.5px #4dab9a; }
-.calendar-event.alio .dot,
-.legend-item.alio .dot { box-shadow: inset 0 0 0 1.5px #e8835a; }
-.calendar-event.external .dot,
-.legend-item.external .dot { box-shadow: inset 0 0 0 1.5px #d9a54a; }
-
-.calendar-event:is(.google, .alio, .external) .dot,
-.legend-item:is(.google, .alio, .external) .dot {
-  width: 7px;
-  height: 7px;
-  background: transparent;
 }
 
 /* 하루 전체 일정 목록 */
@@ -3425,7 +3485,7 @@ dialog[open] {
 }
 
 dialog[open]::backdrop {
-  background: rgba(0, 0, 0, .5);
+  background: rgb(0 0 0 / calc(.5 * var(--shade)));
 }
 
 @starting-style {
@@ -3527,7 +3587,7 @@ main.view-enter > :not(.peek) {
   width: 220px;
   transform: rotate(2deg);
   background: var(--elevated);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .5), inset 0 0 0 1px var(--border-strong);
+  box-shadow: 0 12px 28px rgb(0 0 0 / calc(.5 * var(--shade))), inset 0 0 0 1px var(--border-strong);
 }
 
 /* 5. 되돌리기 토스트: 남은 시간이 줄어드는 막대 */
@@ -3579,7 +3639,7 @@ main.view-enter > :not(.peek) {
   display: block;
   height: 10px;
   border-radius: 5px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, .06) 25%, rgba(255, 255, 255, .13) 50%, rgba(255, 255, 255, .06) 75%);
+  background: linear-gradient(90deg, rgb(var(--fg) / .06) 25%, rgb(var(--fg) / .13) 50%, rgb(var(--fg) / .06) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.2s linear infinite;
 }
@@ -3804,7 +3864,7 @@ main.view-enter > :not(.peek) {
 
 .gb-mark.cert .icon,
 .list-mark.cert .icon {
-  color: color-mix(in srgb, var(--c-yellow) 75%, #fff);
+  color: color-mix(in srgb, var(--c-yellow) 75%, var(--tag-ink));
 }
 
 .gb-score {
@@ -3837,7 +3897,7 @@ main.view-enter > :not(.peek) {
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--elevated);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+  box-shadow: 0 10px 28px rgb(0 0 0 / calc(.45 * var(--shade)));
   animation: pop-in .14s var(--ease-out);
 }
 
@@ -3981,6 +4041,15 @@ main.view-enter > :not(.peek) {
   font-variant-numeric: tabular-nums;
   transition: --p .6s var(--ease-out);
 }
+
+/* 진행률이 바뀌면 원이 스르륵 차오르도록 --p를 숫자로 등록해 전환한다. */
+@property --p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.pct { transition: --p .5s var(--ease-out); }
 
 .pie {
   width: 12px;
@@ -4187,9 +4256,9 @@ ul.goal-group,
 }
 
 .segment.active {
-  background: rgba(255, 255, 255, .16);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(255, 255, 255, .06);
-  color: #fff;
+  background: rgb(var(--fg) / .16);
+  box-shadow: 0 1px 2px rgb(0 0 0 / calc(.35 * var(--shade))), inset 0 0 0 1px rgb(var(--fg) / .06);
+  color: var(--text);
   font-weight: 500;
 }
 
@@ -4617,7 +4686,7 @@ ul.goal-group,
   padding: 0;
   border: 0;
   border-radius: 3px;
-  background: rgba(255, 255, 255, .07);
+  background: rgb(var(--fg) / .07);
 }
 
 button.grass-cell {
@@ -4636,7 +4705,7 @@ button.grass-cell:hover {
 
 /* 색칠되지 않은 칸(안 한 날·쉬는 날·앞으로 올 날)은 깃허브처럼 모두 같은 색 */
 
-.grass-cell.today { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6); }
+.grass-cell.today { box-shadow: inset 0 0 0 1.5px rgb(var(--fg) / .6); }
 .grass-cell.outside { visibility: hidden; }
 
 /* 반년 넘기기 */
@@ -4829,7 +4898,7 @@ button.grass-cell:hover {
 
 .study-routine-row:hover,
 .study-managed-row:hover {
-  background: rgba(255, 255, 255, .025);
+  background: rgb(var(--fg) / .025);
 }
 
 .study-check {
@@ -4839,7 +4908,7 @@ button.grass-cell:hover {
   width: 20px;
   height: 20px;
   padding: 0;
-  border: 1.5px solid rgba(255, 255, 255, .28);
+  border: 1.5px solid rgb(var(--fg) / .28);
   border-radius: 6px;
   background: transparent;
   color: #fff;
@@ -4865,6 +4934,12 @@ button.grass-cell:hover {
 
 .study-check[aria-checked=true] .icon {
   opacity: 1;
+}
+
+.study-check.just-checked { animation: check-pop .3s var(--ease-out); }
+
+@keyframes check-pop {
+  40% { transform: scale(1.1); }
 }
 
 .study-check:disabled {
@@ -4895,7 +4970,7 @@ button.grass-cell:hover {
 .study-routine-row.is-complete .study-routine-copy > strong {
   color: var(--text-3);
   text-decoration: line-through;
-  text-decoration-color: rgba(255, 255, 255, .25);
+  text-decoration-color: rgb(var(--fg) / .25);
 }
 
 .study-amount {
@@ -5071,7 +5146,7 @@ button.grass-cell:hover {
   padding: 0 10px;
   border: 0;
   border-radius: 5px;
-  background: rgba(255, 255, 255, .08);
+  background: rgb(var(--fg) / .08);
   box-shadow: inset 0 0 0 1px var(--accent);
   font-size: 13px;
 }
@@ -5099,7 +5174,7 @@ button.grass-cell:hover {
 .study-days input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .study-days span { display: grid; place-items: center; height: 32px; border-radius: 6px; color: var(--text-3); font-size: 13px; transition: background-color .12s, color .12s; }
 .study-days label:hover span { color: var(--text); }
-.study-days input:checked + span { background: rgba(255, 255, 255, .16); box-shadow: 0 1px 2px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(255, 255, 255, .06); color: #fff; font-weight: 500; }
+.study-days input:checked + span { background: rgb(var(--fg) / .16); box-shadow: 0 1px 2px rgb(0 0 0 / calc(.35 * var(--shade))), inset 0 0 0 1px rgb(var(--fg) / .06); color: var(--text); font-weight: 500; }
 .study-days input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* 교재 고르기: 기본 위아래 화살표 대신 앱의 아래 화살표 */
@@ -5145,6 +5220,19 @@ button.grass-cell:hover {
   --lab-editor: var(--surface);
   --lab-mantle: color-mix(in srgb, var(--bg) 55%, var(--surface));
   --lab-crust: var(--bg);
+}
+
+:root[data-theme="light"] .lab-page {
+  --lab-kw: #8839ef;
+  --lab-str: #40a02b;
+  --lab-num: #fe640b;
+  --lab-fn: #1e66f5;
+  --lab-comment: #7c7f93;
+  --lab-live: #df8e1d;
+  --lab-focus: #d20f39;
+  --lab-rest: #1e66f5;
+  --lab-done: #179299;
+  --lab-until: #209fb5;
 }
 
 .lab-editor {
@@ -5319,8 +5407,8 @@ button.grass-cell:hover {
 }
 
 .lab-autosize input::placeholder { color: var(--text-3); opacity: .55; }
-.lab-autosize input:hover { background: rgba(255, 255, 255, .04); }
-.lab-autosize input:focus { background: rgba(255, 255, 255, .07); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+.lab-autosize input:hover { background: rgb(var(--fg) / .04); }
+.lab-autosize input:focus { background: rgb(var(--fg) / .07); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
 .lab-autosize input[readonly] { cursor: default; }
 .lab-autosize input[readonly]:hover { background: transparent; }
 .lab-cond { color: var(--lab-str); }
@@ -5401,7 +5489,7 @@ button.grass-cell:hover {
   overflow: auto;
   border-radius: 10px;
   background: var(--elevated);
-  box-shadow: 0 0 0 1px var(--border-strong), 0 16px 40px rgba(0, 0, 0, .5);
+  box-shadow: 0 0 0 1px var(--border-strong), 0 16px 40px rgb(0 0 0 / calc(.5 * var(--shade)));
   font-family: var(--font, inherit);
   white-space: normal;
 }
@@ -5621,7 +5709,7 @@ button.grass-cell:hover {
   overflow: visible;
 }
 
-.lab-dial-track { fill: none; stroke: rgba(255, 255, 255, .09); stroke-width: 2; }
+.lab-dial-track { fill: none; stroke: rgb(var(--fg) / .09); stroke-width: 2; }
 .lab-dial-wedge { fill: var(--dial); fill-opacity: .2; }
 .lab-dial-edge { fill: none; stroke: var(--dial); stroke-width: 4; stroke-linecap: round; }
 
@@ -5675,7 +5763,7 @@ button.grass-cell:hover {
 .lab-now-tab:hover { color: var(--text); }
 
 .lab-now-tab.active {
-  background: rgba(255, 255, 255, .06);
+  background: rgb(var(--fg) / .06);
   box-shadow: inset 0 0 0 1px var(--border-strong);
   color: var(--text);
 }
@@ -6085,18 +6173,56 @@ button.grass-cell:hover {
 .sidebar button.brand { padding-right: 38px; }
 .sidebar-collapsed .app-shell { grid-template-columns: 44px minmax(0, 1fr); }
 .sidebar-collapsed main { grid-column: 2; }
-.sidebar-collapsed .sidebar-toggle { left: 8px; background: var(--bg); }
-.sidebar-collapsed .sidebar-toggle:hover { background: var(--hover); }
 .sidebar-collapsed .sidebar-toggle-arrow { transform: rotate(180deg); transform-origin: 15px 12px; }
 .sidebar-collapsed .peek { width: min(660px, calc(100vw - 44px - 80px)); }
+/* 숨긴 사이드바: 화면 왼쪽 밖에 두었다가, 떠오를 때 본문을 밀지 않고 위에 겹쳐 밀어 넣는다.
+   버튼도 사이드바와 함께 들어오고 나가서, 숨긴 동안에는 화면에 아무것도 남지 않는다. */
+.sidebar-collapsed .sidebar {
+  position: fixed;
+  z-index: 14;
+  left: 0;
+  top: 0;
+  width: 208px;
+  transform: translateX(-100%);
+  visibility: hidden;
+  box-shadow: none;
+}
+.sidebar-collapsed .sidebar-toggle {
+  transform: translateX(-208px);
+  opacity: 0;
+}
+.sidebar-collapsed .sidebar-toggle:focus-visible { transform: none; left: 8px; opacity: 1; }
+.sidebar-floating .sidebar {
+  transform: none;
+  visibility: visible;
+  border-right-color: var(--border-strong);
+  box-shadow: 12px 0 32px rgb(0 0 0 / calc(.45 * var(--shade)));
+}
+.sidebar-floating .sidebar-toggle { transform: none; opacity: 1; }
+.sidebar-ready .sidebar,
+.sidebar-ready .sidebar-toggle {
+  transition: transform .22s var(--ease-out), opacity .22s var(--ease-out), box-shadow .22s var(--ease-out), visibility 0s .22s;
+}
+.sidebar-ready.sidebar-floating .sidebar,
+.sidebar-ready.sidebar-floating .sidebar-toggle {
+  transition: transform .22s var(--ease-out), opacity .22s var(--ease-out), box-shadow .22s var(--ease-out), visibility 0s;
+}
 @media (max-width: 900px) {
   .sidebar { padding-right: 48px; }
   .sidebar button.brand { padding-right: 10px; }
   /* 위쪽 메뉴 막대가 옆으로 넘어가면 글자가 버튼 밑으로 흐려지며 들어가, 잘린 것이 아니라 더 있다는 게 보이게 한다. */
   .sidebar-toggle { left: auto; right: 10px; top: 10px; box-shadow: 0 0 0 10px var(--sidebar); }
   .sidebar-toggle::before { content: ''; position: absolute; top: -10px; right: calc(100% + 10px); bottom: -10px; width: 32px; background: linear-gradient(to right, transparent, var(--sidebar)); pointer-events: none; }
-  .sidebar-collapsed .sidebar-toggle { right: auto; box-shadow: none; }
+  .sidebar-collapsed .sidebar-toggle { right: auto; left: 8px; box-shadow: none; background: var(--bg); transform: none; opacity: 1; }
   .sidebar-collapsed .sidebar-toggle::before { content: none; }
+  .sidebar-collapsed .sidebar { display: none; }
+}
+
+/* 화면 밝기를 바꾸는 순간에는 전환 효과를 꺼서 한 번에 바뀌게 한다. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }
 
 /* ---------- ⋯ 메뉴 · 백업 메뉴 (details) ---------- */
@@ -6131,7 +6257,7 @@ button.grass-cell:hover {
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   background: var(--elevated);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .45);
+  box-shadow: 0 12px 32px rgb(0 0 0 / calc(.45 * var(--shade)));
 }
 
 .more-menu .menu-panel {

@@ -317,7 +317,21 @@ function checkRoutine(id) {
   }
   const date = selectedDate; const definition = entry.definition; const book = bookById(definition.bookId);
   const amount = book ? Math.min(definition.amount || 0, bookProgress(book, data.studyLogs).remaining) : 0;
+  const before = main.querySelector(`.grass-cell[data-id="${date}"]`); const beforeColor = before && getComputedStyle(before).backgroundColor;
   recordStudy(data, definition, date, amount); persist(); keepScroll(renderStudy);
+  // 체크칸이 살짝 튀고, 위쪽 잔디의 그날 칸은 예전 색에서 새 색으로 물들며 잔잔한 테두리가 한 번 퍼진다.
+  if (!reducedMotion()) {
+    main.querySelector(`.study-check[data-id="${CSS.escape(id)}"]`)?.classList.add('just-checked');
+    const cell = main.querySelector(`.grass-cell[data-id="${date}"]`);
+    if (cell && beforeColor) {
+      const style = getComputedStyle(cell); const glow = style.getPropertyValue('--grass').trim() || style.backgroundColor;
+      const ring = style.boxShadow === 'none' ? '' : `${style.boxShadow}, `;
+      cell.animate([
+        { backgroundColor: beforeColor, boxShadow: `${ring}0 0 0 0 color-mix(in srgb, ${glow} 70%, transparent)` },
+        { backgroundColor: style.backgroundColor, boxShadow: `${ring}0 0 0 6px color-mix(in srgb, ${glow} 0%, transparent)` },
+      ], { duration: 700, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    }
+  }
   if (book) showToast(`${book.name} ${amount}${book.unit} 기록`, { label: '분량 고치기', run: () => editAmount(id, date) });
 }
 
