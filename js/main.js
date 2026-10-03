@@ -16,6 +16,7 @@ import { persist, refreshFromServer, saveCurrentEditor, startFromServer } from '
 import { animateReorder, flushPending, reducedMotion, setSaveState, showToast } from './ui.js';
 import { autoGrow, dateKey, escapeHtml, formatDateLong, icon, todayKey, uid } from './util.js';
 import { setupUpdateButton } from './update.js';
+import { alioState, openAlioDialog, syncAlio } from './alio.js';
 
 const sidebarToggle = $('#sidebar-toggle');
 const sidebar = $('#sidebar');
@@ -94,6 +95,7 @@ main.addEventListener('click', async event => {
     toggleExperienceKeyword(control.dataset.keyword);
   }
   if (action === 'calendar-settings') openCalendarDialog();
+  if (action === 'alio-settings') openAlioDialog();
   if (action === 'go-calendar') navTo('calendar');
   if (action === 'posting-layout') {
     setPostingLayout(control.dataset.layout);
@@ -301,6 +303,10 @@ try {
     calendarState.connected = Boolean((await (await fetch('/api/calendar')).json()).connected);
     if (calendarState.connected) { if (view === 'calendar') renderCalendar(); syncGoogleCalendar(); }
   } catch { /* 캘린더 연결 확인에 실패해도 기록은 그대로 쓸 수 있다. */ }
+  try {
+    alioState.connected = Boolean((await (await fetch('/api/alio')).json()).connected);
+    if (alioState.connected) syncAlio();
+  } catch { /* 잡알리오 연결 확인에 실패해도 기록은 그대로 쓸 수 있다. */ }
 } catch (error) {
   setSaveState('연결 오류');
   main.innerHTML = `<div class="empty-state"><h2>저장 파일을 열지 못했습니다</h2><p>${escapeHtml(error.message)} 서버를 다시 실행한 뒤 새로고침해 주세요.</p></div>`;

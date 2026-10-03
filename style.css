@@ -1822,6 +1822,11 @@ select option {
   background: #4dab9a;
 }
 
+.calendar-event.alio .dot,
+.legend-item.alio .dot {
+  background: #e8835a;
+}
+
 .calendar-event.external .dot,
 .legend-item.external .dot {
   background: #d9a54a;
@@ -2117,6 +2122,37 @@ dialog::backdrop {
   margin: 0;
   color: var(--text);
 }
+
+.sync-detail.error { color: var(--danger); }
+.steps a { color: var(--accent-hover); }
+
+/* 잡알리오 조건: 받은 공고에 있는 값을 칩으로 고른다(숫자는 그 값의 공고 수) */
+.alio-dialog { width: min(720px, calc(100vw - 32px)); }
+.alio-groups { display: grid; gap: 14px; margin: 14px 0 16px; }
+.alio-label { margin: 0 0 6px; color: var(--text-2); font-size: 13px; }
+.alio-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 128px; overflow-y: auto; }
+.alio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.alio-chip span { color: var(--text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.alio-chip:hover { background: var(--elevated); color: var(--text); }
+.alio-chip[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent); color: var(--text); }
+.alio-chip[aria-pressed="true"] span { color: var(--text-2); }
+.alio-empty { color: var(--text-3); font-size: 13px; }
+.alio-check { display: flex; align-items: center; gap: 8px; margin: 12px 0 14px; color: var(--text-2); font-size: 13px; }
+#alio-count strong { color: var(--text); font-weight: 600; }
 
 .event-dialog #event-date:empty,
 .event-dialog #event-description:empty {
@@ -3290,6 +3326,10 @@ button.brand:hover {
 
 .day-event.google .dot {
   background: #4dab9a;
+}
+
+.day-event.alio .dot {
+  background: #e8835a;
 }
 
 .day-event.personal .dot {

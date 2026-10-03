@@ -95,6 +95,41 @@
     </form>
   </dialog>
 
+  <dialog id="alio-dialog" class="form-dialog calendar-dialog alio-dialog" aria-labelledby="alio-dialog-title">
+    <form id="alio-form">
+      <div class="dialog-top"><div><p class="eyebrow">월간 달력</p><h2 id="alio-dialog-title">잡알리오 공고 받기</h2></div><button type="button" class="icon-button close-dialog" aria-label="닫기">×</button></div>
+      <div id="alio-connect">
+        <p class="dialog-description">공공기관 채용정보(잡알리오)에서 진행 중인 공고를 받아, 고른 조건에 맞는 것만 달력에 띄웁니다. 무료이고 AI나 구글 캘린더가 필요 없어요.</p>
+        <ol class="steps">
+          <li><a href="https://www.data.go.kr/data/15125273/openapi.do" target="_blank" rel="noopener noreferrer">공공데이터포털 · 공공기관 채용정보 조회서비스</a>에 로그인해 <strong>활용신청</strong></li>
+          <li><strong>마이페이지 → 데이터 활용 → Open API → 활용신청 현황</strong>에서 <strong>일반 인증키</strong> 복사</li>
+          <li>아래에 붙여 넣고 <strong>연결</strong> (발급 직후에는 1시간쯤 뒤부터 될 수 있어요)</li>
+        </ol>
+        <div class="form-grid"><label class="full">인증키 <input name="key" type="text" placeholder="공공데이터포털 일반 인증키" autocomplete="off" spellcheck="false"></label></div>
+        <p class="field-help">인증키는 이 컴퓨터에만 저장되고 백업 파일에는 포함되지 않습니다.</p>
+      </div>
+      <div id="alio-filters" hidden>
+        <p class="dialog-description" id="alio-count" role="status"></p>
+        <p class="field-help">항목마다 아무것도 고르지 않으면 전부 포함해요. 여러 개를 고르면 그중 하나라도 맞는 공고가 떠요. <button type="button" class="text-button" id="alio-preset-it">전산직 추천 조건 넣기</button></p>
+        <div class="alio-groups">
+          <div class="alio-group"><p class="alio-label">근무지</p><div class="alio-chips" data-group="regions"></div></div>
+          <div class="alio-group"><p class="alio-label">NCS 분야</p><div class="alio-chips" data-group="ncs"></div></div>
+          <div class="alio-group"><p class="alio-label">고용형태</p><div class="alio-chips" data-group="hire"></div></div>
+          <div class="alio-group"><p class="alio-label">채용구분</p><div class="alio-chips" data-group="kinds"></div></div>
+        </div>
+        <div class="form-grid"><label>검색어 <input name="keywords" type="text" placeholder="전산, 정보 (제목·기관명에 있으면)" autocomplete="off"></label><label>빼는 단어 <input name="excludes" type="text" placeholder="일용, 업무보조 (제목에 있으면 뺌)" autocomplete="off"></label></div>
+        <label class="alio-check"><input type="checkbox" name="skipReplacement" checked> 대체인력(육아휴직 대체 등) 공고 빼기</label>
+        <p class="sync-detail" id="alio-sync-detail" role="status"></p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="text-button danger-text" id="alio-disconnect" hidden>연결 해제</button><span class="dialog-spacer"></span>
+        <button type="button" class="secondary-button close-dialog">닫기</button>
+        <button type="button" class="secondary-button" id="alio-sync-now" hidden>지금 받기</button>
+        <button type="submit" class="primary-button" id="alio-submit">연결</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

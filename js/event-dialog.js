@@ -58,7 +58,7 @@ export async function openEvent(id) {
   const event = allEvents().find(item => item.id === id);
   if (!event) return;
   openEventId = id;
-  const sourceLabel = event.source === 'google' ? '구글 캘린더' : event.source === 'external' ? '파일에서 가져온 일정' : '내 지원 일정';
+  const sourceLabel = event.source === 'google' ? '구글 캘린더' : event.source === 'alio' ? '잡알리오' : event.source === 'external' ? '파일에서 가져온 일정' : '내 지원 일정';
   $('#event-source').textContent = `${sourceLabel} · ${formatDate(event.date)}${shownTime(event) ? ` ${shownTime(event)}` : ''}`;
   $('#event-dialog-title').textContent = event.title;
   $('#event-date').textContent = '';

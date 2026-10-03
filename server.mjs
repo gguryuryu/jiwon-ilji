@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { privateAddress, decode, meta, jobPosting, decodedHtml, normalizedDate, normalizedTime, normalizedEmployment, cleanOrganization, pageTitleParts, roleFromTitle, jobAlioFields, textDeadline, pageText, parseEventFields } from './lib/parse.mjs';
 import { createUpdater } from './lib/update.mjs';
+import { AlioError, fetchAlioPostings } from './lib/alio.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const dataPath = process.env.JOB_TRACKER_DATA_PATH ? resolve(process.env.JOB_TRACKER_DATA_PATH) : join(root, 'data', 'job-search.json');
@@ -15,6 +16,7 @@ const port = Number(process.env.PORT || 4173);
 const empty = { version: 1, postings: [], experiences: [], calendarEvents: [] };
 const pullUpdate = createUpdater(root);
 let updateTask = null;
+let alioCache = null; // { key, at, items }
 
 // Node.js가 너무 오래된 버전이면 알 수 없는 오류 대신 안내하고 끝낸다.
 if (Number(process.versions.node.split('.')[0]) < 22) {
@@ -308,6 +310,34 @@ const server = http.createServer(async (request, response) => {
           ? '구글 캘린더 연결이 지연되고 있어요. 잠시 후 다시 시도합니다.' : error.message;
         return sendJson(response, 502, { error: message });
       }
+    }
+    // 잡알리오: 인증키는 구글 캘린더 주소처럼 settings.json에만 두고, 공고는 30분 동안 기억해 하루 조회 한도를 아낀다.
+    if (url.pathname === '/api/alio') {
+      const settings = await loadSettings();
+      if (request.method === 'GET') return sendJson(response, 200, { connected: Boolean(settings.alioKey) });
+      if (request.method === 'PUT') {
+        const key = String((await readBody(request)).key || '').trim();
+        if (!key || key.length > 300) return sendJson(response, 422, { error: '공공데이터포털에서 받은 인증키를 붙여 넣어 주세요.' });
+        try { alioCache = { key, at: Date.now(), items: await fetchAlioPostings(key) }; }
+        catch (error) { return sendJson(response, error instanceof AlioError ? error.status : 502, { error: error.message }); }
+        await saveSettings({ ...settings, alioKey: key });
+        return sendJson(response, 200, { connected: true });
+      }
+      if (request.method === 'DELETE') {
+        delete settings.alioKey; alioCache = null;
+        await saveSettings(settings);
+        return sendJson(response, 200, { connected: false });
+      }
+    }
+    if (url.pathname === '/api/alio/postings' && request.method === 'GET') {
+      const { alioKey } = await loadSettings();
+      if (!alioKey) return sendJson(response, 404, { error: '잡알리오가 연결되어 있지 않아요.' });
+      const fresh = alioCache?.key === alioKey && Date.now() - alioCache.at < 30 * 60_000 && url.searchParams.get('refresh') !== '1';
+      if (!fresh) {
+        try { alioCache = { key: alioKey, at: Date.now(), items: await fetchAlioPostings(alioKey) }; }
+        catch (error) { return sendJson(response, error instanceof AlioError ? error.status : 502, { error: error.message }); }
+      }
+      return sendJson(response, 200, { items: alioCache.items, fetchedAt: alioCache.at });
     }
     if (url.pathname === '/api/event-fields' && request.method === 'POST') {
       return sendJson(response, 200, await eventFields(await readBody(request)));
