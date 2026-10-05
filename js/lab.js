@@ -4,7 +4,7 @@ import { main } from './dom.js';
 import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
 import { showToast } from './ui.js';
-import { escapeHtml as esc, todayKey } from './util.js';
+import { escapeHtml as esc, nativeHost, todayKey } from './util.js';
 import { activeSeconds, breakLoop, clock, finishUntil, parseUntil, untilDate, untilState, finishBlock, liveBlocks, pauseLoop, resumeLoop, completeLink, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
 
 const blockById = id => data.labBlocks.find(block => block.id === id);
@@ -332,8 +332,8 @@ export function renderLab() {
 const keepScroll = paint => { const top = window.scrollY; paint(); window.scrollTo({ top, behavior: 'instant' }); };
 
 // ---------- 맥 앱의 작은 타이머 창 ----------
-// 맥 앱(지원일지.app) 안에서만 보이는 버튼. 작은 창의 pause·break는 여기로 돌아와 본 창에서 처리한다.
-const nativeBridge = () => window.webkit?.messageHandlers?.jiwon;
+// 전용 창(맥 지원일지.app · 윈도우 앱) 안에서만 보이는 버튼. 작은 창의 pause·break는 여기로 돌아와 본 창에서 처리한다.
+const nativeBridge = nativeHost;
 window.jiwonLab = {
   act(action, id) {
     const block = blockById(id); if (!block?.runningSince) return;

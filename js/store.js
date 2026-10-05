@@ -4,6 +4,7 @@ import { mergeInto } from './merge.js';
 import { migrate } from './model.js';
 import { data, emptyData, setData } from './state.js';
 import { isEditing, safeRender, setSaveState, showToast } from './ui.js';
+import { nativeHost } from './util.js';
 
 let pendingSave = false;
 
@@ -51,8 +52,8 @@ async function sendSave() {
   revision = result.revision; baseSnapshot = sent; saveRetries = 0;
   setSaveState('저장됨');
   channel?.postMessage({ type: 'saved', revision });
-  // 맥 앱의 작은 타이머 창에도 새로 읽으라고 알린다.
-  window.webkit?.messageHandlers?.jiwon?.postMessage({ type: 'saved' });
+  // 전용 창(맥·윈도우)의 작은 타이머 창에도 새로 읽으라고 알린다.
+  nativeHost()?.postMessage({ type: 'saved' });
 }
 
 // 저장이 실패하면 1초, 2초, 4초… 간격으로 다시 시도하고, 여섯 번째에도 안 되면 알린다.

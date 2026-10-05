@@ -38,6 +38,9 @@ const icons = {
   expand: '<path d="M14.5 4.5h5v5M9.5 19.5h-5v-5M19.5 4.5l-6 6M4.5 19.5l6-6"/>',
 };
 
+// 전용 창(맥 지원일지.app · 윈도우 jiwon-ilji.exe)과 주고받는 통로. 브라우저로 열었으면 null.
+export const nativeHost = () => window.webkit?.messageHandlers?.jiwon || window.chrome?.webview || null;
+
 export const icon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name] || ''}</svg>`;
 
 export const th = (name, label, className = '', width = '') => `<th scope="col" class="${className}"${width ? ` style="width:${width}"` : ''}><span class="th">${icon(name)}${label}</span></th>`;

@@ -41,6 +41,10 @@ jobs:
           if (-not $smoke.ok) { throw "앱 화면이 뜨지 않았습니다: $($smoke.error)" }
           if ($smoke.nav -lt 5) { throw "메뉴가 다 보이지 않습니다: $($smoke.nav)" }
           if (-not $smoke.windowTitle.Contains('지원일지')) { throw "창 제목이 다릅니다: $($smoke.windowTitle)" }
+          if (-not $smoke.bridge) { throw '화면이 전용 창 통로(chrome.webview)를 찾지 못했습니다' }
+          if (-not $smoke.mini) { throw '작은 타이머 창 화면이 뜨지 않았습니다' }
+          if (-not $smoke.miniSized) { throw '작은 타이머 창이 화면 신호(size)를 받지 못했습니다' }
+          Write-Host "작은 타이머 창: $($smoke.miniText)"
           Start-Sleep -Seconds 3
           $stillUp = $true
           try { Invoke-WebRequest http://127.0.0.1:4192/api/data -UseBasicParsing -TimeoutSec 3 | Out-Null } catch { $stillUp = $false }

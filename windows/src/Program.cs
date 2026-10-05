@@ -2,6 +2,7 @@
 // 맥의 지원일지.app(mac/main.swift)과 같은 역할이다. 창을 닫으면 작성 중인 내용을 저장한 뒤 서버도 끈다.
 // 빌드는 GitHub Actions(.github/workflows/windows-app.yml)가 하고, 만든 파일은 windows/app/에 올린다.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -12,6 +13,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
@@ -54,6 +56,9 @@ namespace JiwonIlji
 
         readonly string smoke;
         readonly WebView2 web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Background };
+        CoreWebView2Environment environment;
+        MiniForm mini;           // 집중 루프의 작은 타이머 창
+        Point? miniLocation;     // 작은 창을 옮겨 둔 자리(다음에도 그 자리에 연다)
         Process server;          // 이 창이 켠 서버(이미 켜져 있던 서버는 건드리지 않는다)
         bool serverReady, quitting, closeNow;
         int restarts;
@@ -96,7 +101,7 @@ namespace JiwonIlji
             try
             {
                 Directory.CreateDirectory(DataDir);
-                var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(DataDir, "webview2"));
+                environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(DataDir, "webview2"));
                 await web.EnsureCoreWebView2Async(environment);
             }
             catch (WebView2RuntimeNotFoundException)
@@ -132,6 +137,9 @@ namespace JiwonIlji
             // 창 제목 = 화면 제목(집중 루프가 돌면 남은 시간이 작업 표시줄에도 보인다)
             core.DocumentTitleChanged += (sender, e) => { if (IsLocal(core.Source)) Text = core.DocumentTitle; };
 
+            // 화면에서 보내는 신호(작은 타이머 창 열기, 저장했음)
+            core.WebMessageReceived += (sender, e) => OnWebMessage(e.WebMessageAsJson);
+
             // 앱 밖의 주소(공고 원문 등)는 평소 쓰는 브라우저로 연다.
             core.NavigationStarting += (sender, e) => { if (!IsLocal(e.Uri)) { e.Cancel = true; OpenOutside(e.Uri); } };
             core.NewWindowRequested += (sender, e) => { e.Handled = true; OpenOutside(e.Uri); };
@@ -165,6 +173,41 @@ namespace JiwonIlji
                   if (box) { box.focus(); box.select(); return; }
                   location.hash = '#/'; setTimeout(() => document.querySelector('#posting-search')?.focus(), 300);
                 }, true);");
+        }
+
+        // ---------- 작은 타이머 창(집중 루프 → ⧉ 작은 창) ----------
+        // 다른 프로그램 위에 늘 떠 있는 작은 창. 작은 창의 pause·break는 본 창 화면이 처리해 기록은 한 곳에서만 바뀐다.
+
+        void OnWebMessage(string json)
+        {
+            Dictionary<string, object> body;
+            try { body = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(json); } catch { return; }
+            if (body == null || !body.TryGetValue("type", out var type)) return;
+            switch (type as string)
+            {
+                case "openMini": ShowMini(); break;
+                case "saved": mini?.RefreshTimers(); break;
+                case "act":
+                    if (body.TryGetValue("action", out var action) && body.TryGetValue("id", out var id) && action is string a && id is string i)
+                        _ = web.CoreWebView2?.ExecuteScriptAsync("window.jiwonLab && jiwonLab.act(" + Json(a) + ", " + Json(i) + ")");
+                    break;
+                case "focusMain":
+                    if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                    Activate();
+                    break;
+                case "size":
+                    if (mini != null && body.TryGetValue("height", out var height)) { try { mini.FitHeight(Convert.ToDouble(height)); } catch { /* 숫자가 아니면 무시 */ } }
+                    break;
+            }
+        }
+
+        void ShowMini()
+        {
+            if (environment == null) return;
+            if (mini != null && !mini.IsDisposed) { mini.Show(); return; }
+            mini = new MiniForm(environment, AppUrl + "/mini.html", miniLocation, OnWebMessage, IsLocal);
+            mini.FormClosed += (sender, e) => { miniLocation = ((Form)sender).Location; mini = null; };
+            mini.Show();
         }
 
         static bool IsLocal(string uri)
@@ -298,6 +341,7 @@ namespace JiwonIlji
             if (quitting) return;
             quitting = true;
             SaveWindow();
+            mini?.Close();
             var core = web.CoreWebView2;
             if (core != null && serverReady && core.Source.StartsWith(AppUrl))
             {
@@ -342,6 +386,12 @@ namespace JiwonIlji
                         if (Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(saved)) && saved.Width >= 400 && saved.Height >= 300) Bounds = saved;
                     }
                     if (parts[0] == "max" && parts[1] == "1") WindowState = FormWindowState.Maximized;
+                    if (parts[0] == "mini")
+                    {
+                        var m = parts[1].Split(',').Select(int.Parse).ToArray();
+                        var point = new Point(m[0], m[1]);
+                        if (Screen.AllScreens.Any(screen => screen.WorkingArea.Contains(point))) miniLocation = point;
+                    }
                     if (parts[0] == "zoom" && double.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) && value >= .5 && value <= 3) zoom = value;
                 }
             }
@@ -354,11 +404,14 @@ namespace JiwonIlji
             try
             {
                 var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
-                File.WriteAllLines(SettingsPath, new[] {
+                var lines = new List<string> {
                     $"bounds={bounds.X},{bounds.Y},{bounds.Width},{bounds.Height}",
                     "max=" + (WindowState == FormWindowState.Maximized ? "1" : "0"),
                     "zoom=" + zoom.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                });
+                };
+                var place = mini != null && !mini.IsDisposed ? mini.Location : miniLocation;
+                if (place.HasValue) lines.Add($"mini={place.Value.X},{place.Value.Y}");
+                File.WriteAllLines(SettingsPath, lines);
             }
             catch { /* 저장 못 해도 다음엔 기본 크기로 연다 */ }
         }
@@ -378,7 +431,22 @@ namespace JiwonIlji
                     saved: document.querySelector('[data-save-state]')?.textContent || '' }) : null");
             }
             var text = result == "null" ? "{\"ok\":false,\"error\":\"화면이 뜨지 않았어요\"}" : result;
-            text = text.Substring(0, text.LastIndexOf('}')) + ",\"windowTitle\":" + Json(Text) + "}";
+            // 작은 타이머 창: 화면이 전용 창 통로를 찾는지, 작은 창이 떠서 높이 맞추기 신호(size)를 보내오는지
+            string bridge = "false", miniText = "", miniOk = "false", miniSized = "false";
+            if (result != "null")
+            {
+                bridge = await core.ExecuteScriptAsync("!!(window.chrome && window.chrome.webview)");
+                ShowMini();
+                for (int i = 0; i < 40 && mini != null && !(mini.Loaded && mini.Sized > 0); i++) await Task.Delay(250);
+                if (mini != null)
+                {
+                    miniOk = mini.Loaded ? "true" : "false";
+                    miniSized = mini.Sized > 0 ? "true" : "false";
+                    miniText = await mini.ScriptAsync("document.querySelector('#timers') ? document.querySelector('#timers').textContent.trim() : ''");
+                    mini.Close();
+                }
+            }
+            text = text.Substring(0, text.LastIndexOf('}')) + ",\"windowTitle\":" + Json(Text) + ",\"bridge\":" + bridge + ",\"mini\":" + miniOk + ",\"miniSized\":" + miniSized + ",\"miniText\":" + (string.IsNullOrEmpty(miniText) ? "\"\"" : miniText) + "}";
             File.WriteAllText(smoke, text, Encoding.UTF8);
             if (result == "null") ExitCode = 1;
             Close();
@@ -387,6 +455,72 @@ namespace JiwonIlji
         const string LoadingHtml = @"<html><body style=""margin:0;height:100vh;display:grid;place-items:center;background:#151516;color:rgba(255,255,255,.46);font:14px 'Segoe UI','Malgun Gothic',sans-serif"">
 <div style=""display:grid;justify-items:center;gap:14px""><div style=""width:22px;height:22px;border:2px solid rgba(255,255,255,.12);border-top-color:rgba(255,255,255,.55);border-radius:50%;animation:s .8s linear infinite""></div>지원일지를 여는 중…</div>
 <style>@keyframes s{to{transform:rotate(1turn)}}</style></body></html>";
+    }
+
+    // 집중 루프의 작은 타이머 창: 늘 맨 위, 작업 표시줄에는 안 나오고, 제목 막대를 끌어 옮긴다.
+    // 화면은 앱 서버의 mini.html(맥 앱과 같은 화면)이고, 본 창과 같은 WebView2 환경을 써서 화면 밝기 설정도 같다.
+    sealed class MiniForm : Form
+    {
+        static readonly Color Background = Color.FromArgb(29, 29, 32);
+        readonly WebView2 web = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Background };
+        public bool Loaded;
+        public int Sized;
+
+        public MiniForm(CoreWebView2Environment environment, string url, Point? location, Action<string> onMessage, Func<string, bool> isLocal)
+        {
+            Text = "집중 루프";
+            BackColor = Background;
+            FormBorderStyle = FormBorderStyle.FixedToolWindow;
+            MaximizeBox = false; MinimizeBox = false;
+            ShowInTaskbar = false;
+            TopMost = true;
+            StartPosition = FormStartPosition.Manual;
+            ClientSize = new Size(Px(320), Px(76));
+            var work = Screen.PrimaryScreen.WorkingArea;
+            Location = location ?? new Point(work.Right - Width - Px(24), work.Top + Px(24));
+            Controls.Add(web);
+            Load += async (sender, e) =>
+            {
+                await web.EnsureCoreWebView2Async(environment);
+                var core = web.CoreWebView2;
+                core.Settings.IsStatusBarEnabled = false;
+                core.Settings.AreDevToolsEnabled = false;
+                core.Settings.AreDefaultContextMenusEnabled = false;
+                core.Settings.IsZoomControlEnabled = false;
+                core.WebMessageReceived += (s, a) => onMessage(a.WebMessageAsJson);
+                core.NavigationStarting += (s, a) => { if (!isLocal(a.Uri)) a.Cancel = true; };
+                core.NewWindowRequested += (s, a) => a.Handled = true;
+                core.NavigationCompleted += async (s, a) =>
+                {
+                    Loaded = a.IsSuccess;
+                    if (!a.IsSuccess && !IsDisposed) { await Task.Delay(1000); if (!IsDisposed) core.Navigate(url); }
+                };
+                core.Navigate(url);
+            };
+        }
+
+        // 띄울 때 지금 쓰던 프로그램에서 포커스를 빼앗지 않는다.
+        protected override bool ShowWithoutActivation => true;
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Native.DarkTitleBar(Handle, Background);
+        }
+
+        static int Px(int value) => (int)Math.Round(value * Native.SystemDpi() / 96f);
+
+        public void RefreshTimers() => _ = web.CoreWebView2?.ExecuteScriptAsync("window.miniRefresh && miniRefresh()");
+
+        // 타이머 수에 맞춰 높이만 바꾼다(화면 높이는 CSS 픽셀로 온다).
+        public void FitHeight(double cssHeight)
+        {
+            int height = (int)Math.Ceiling(Math.Max(40, Math.Min(260, cssHeight)) * Native.SystemDpi() / 96.0);
+            if (ClientSize.Height != height) ClientSize = new Size(ClientSize.Width, height);
+            Sized++;
+        }
+
+        public async Task<string> ScriptAsync(string script) => web.CoreWebView2 == null ? "\"\"" : await web.CoreWebView2.ExecuteScriptAsync(script);
     }
 
     // 예전 바로가기(Edge 앱 창 실행기 · 예전 아이콘 파일)를 이 창으로 바꾼다. 아이콘은 이 프로그램 안의 것을 써서

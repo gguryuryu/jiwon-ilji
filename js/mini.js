@@ -1,10 +1,10 @@
-// 작은 타이머 창(맥 앱의 '작은 창으로 띄우기'): 도는 while을 두 개까지 보여 준다.
+// 작은 타이머 창(맥·윈도우 전용 창의 '⧉ 작은 창'): 도는 while을 두 개까지 보여 준다.
 // 시간은 이 창이 스스로 매초 센다(본 창이 뒤로 가 느려져도 정확하게). pause·break는 본 창에 맡겨 기록은 한 곳에서만 바뀐다.
 import { activeSeconds, clock, linkCall, liveBlocks, parsePomodoro, pomodoroState, untilState } from './lab-model.js';
-import { escapeHtml as esc } from './util.js';
+import { escapeHtml as esc, nativeHost } from './util.js';
 
 const box = document.querySelector('#timers');
-const post = message => window.webkit?.messageHandlers?.jiwon?.postMessage(message);
+const post = message => nativeHost()?.postMessage(message);
 const hhmm = iso => { const date = new Date(iso); return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`; };
 const hms = seconds => { const t = Math.floor(seconds); const h = Math.floor(t / 3600); const m = Math.floor(t % 3600 / 60); const pad = v => String(v).padStart(2, '0'); return h ? `${h}:${pad(m)}:${pad(t % 60)}` : `${m}:${pad(t % 60)}`; };
 const ICONS = {
@@ -89,7 +89,7 @@ box.addEventListener('click', event => {
   if (event.target.closest('[data-open]')) post({ type: 'focusMain' });
 });
 
-// 본 창에서 저장하면 맥 앱이 알려 주고(miniRefresh), 같은 앱 안이면 BroadcastChannel로도 알 수 있다. 혹시 놓쳐도 20초마다 다시 읽는다.
+// 본 창에서 저장하면 전용 창이 알려 주고(miniRefresh), 같은 앱 안이면 BroadcastChannel로도 알 수 있다. 혹시 놓쳐도 20초마다 다시 읽는다.
 window.miniRefresh = refresh;
 if ('BroadcastChannel' in window) new BroadcastChannel('jiwon-ilji').addEventListener('message', event => { if (event.data?.type === 'saved') refresh(); });
 setInterval(tick, 1000);
