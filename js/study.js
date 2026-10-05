@@ -4,7 +4,7 @@ import { data, view } from './state.js';
 import { persist } from './store.js';
 import { flushPending, reducedMotion, showToast } from './ui.js';
 import { escapeHtml as esc, formatDateLong, icon, todayKey, uid } from './util.js';
-import { addStarterPlan, addTodo, todosOn, bookProgress, dayProgress, categoryColor, grassRange, halfYear, liveBooks, liveRoutines, mondayOf, newStudyBook, removeBook, removeRoutine, studyCategories, certCategory, certGoals, recordStudy, routineFields, saveRoutineDefinition, shiftStudyDate, studyDayNames, studyDays, studyEntries, studyUnits, weekProgress } from './study-model.js';
+import { addStarterPlan, addTodo, postponeTodo, todosOn, bookProgress, dayProgress, categoryColor, grassRange, halfYear, liveBooks, liveRoutines, mondayOf, newStudyBook, removeBook, removeRoutine, studyCategories, certCategory, certGoals, recordStudy, routineFields, saveRoutineDefinition, shiftStudyDate, studyDayNames, studyDays, studyEntries, studyUnits, weekProgress } from './study-model.js';
 
 let selectedDate = todayKey();
 let lastToday = selectedDate;
@@ -85,6 +85,7 @@ function todosHtml() {
   const rows = todos.map(todo => `<li class="study-routine-row study-todo-row${todo.done ? ' is-complete' : ''}">
     <button type="button" class="study-check" role="checkbox" aria-checked="${todo.done}" aria-label="${esc(todo.text)} ${todo.done ? '완료 취소' : '완료'}" data-study-action="check-todo" data-id="${esc(todo.id)}" ${future ? 'disabled title="해당 날짜가 되면 기록할 수 있어요"' : ''}>${icon('check')}</button>
     <input class="study-todo-text" value="${esc(todo.text)}" data-todo-id="${esc(todo.id)}" maxlength="100" aria-label="할 일 내용" autocomplete="off">
+    ${todo.done ? '' : `<button type="button" class="study-todo-postpone" data-study-action="postpone-todo" data-id="${esc(todo.id)}" title="${esc(formatDateLong(shiftStudyDate(todo.date, 1)))}로 옮기기">내일로</button>`}
     <button type="button" class="icon-button study-todo-delete" data-study-action="delete-todo" data-id="${esc(todo.id)}" aria-label="${esc(todo.text)} 삭제" title="삭제">×</button>
   </li>`).join('');
   return `<section class="study-category study-todos"><h3><span class="study-category-dot study-todo-dot"></span>${today ? '오늘만 할 일' : '이날만 할 일'}${todos.length ? `<span class="study-small-count">${todos.length}</span>` : ''}</h3><ul>${rows}<li class="study-todo-add">${icon('plus')}<input id="study-todo-input" maxlength="100" placeholder="${today ? '오늘만 할 일 추가' : '할 일 추가'} · Enter" aria-label="${today ? '오늘만 할 일 추가' : '이날 할 일 추가'}" autocomplete="off"></li></ul></section>`;
@@ -359,6 +360,13 @@ function checkTodo(id) {
   celebrateCheck(id, todo.date, finish);
 }
 
+function moveTodoToTomorrow(id) {
+  const todo = todoById(id); if (!todo || todo.done) return;
+  const from = postponeTodo(todo);
+  persist(); keepScroll(renderStudy);
+  showToast(`'${todo.text}' 할 일을 ${formatDateLong(todo.date)}로 미뤘어요`, { label: '되돌리기', run: () => { todo.date = from; todo.updatedAt = new Date().toISOString(); persist(); keepScroll(renderStudy); } });
+}
+
 function deleteTodo(id) {
   const index = (data.studyTodos || []).findIndex(todo => todo.id === id); if (index < 0) return;
   const [removed] = data.studyTodos.splice(index, 1);
@@ -410,6 +418,7 @@ main.addEventListener('click', event => {
   else if (name === 'check') checkRoutine(id);
   else if (name === 'check-todo') checkTodo(id);
   else if (name === 'delete-todo') deleteTodo(id);
+  else if (name === 'postpone-todo') moveTodoToTomorrow(id);
   else if (name === 'edit-amount') editAmount(id);
   else if (name === 'grass-prev' || name === 'grass-next') { grassOffset = Math.min(0, grassOffset + (name === 'grass-next' ? 1 : -1)); keepScroll(renderStudy); }
   else if (name === 'starter-plan') { addStarterPlan(data, todayKey()); persist(); renderStudy(); showToast('필기 계획을 채웠어요. 루틴·교재 탭에서 고칠 수 있어요.'); }

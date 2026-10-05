@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { emptyData } from '../js/state.js';
 import { migrate } from '../js/model.js';
 import { mergeInto } from '../js/merge.js';
-import { addStarterPlan, addTodo, todosOn, bookProgress, categoryColor, certGoals, goalRoutinesOn, linkedRoutines, dayProgress, grassRange, halfYear, liveBooks, liveRoutines, newStudyBook, removeBook, removeRoutine, studyCategories, studyCategoryFor, todayRoutines, recordStudy, routineFields, routineOn, saveRoutineDefinition, shiftStudyDate, studyEntries, studyWeek, weekProgress } from '../js/study-model.js';
+import { addStarterPlan, addTodo, postponeTodo, todosOn, bookProgress, categoryColor, certGoals, goalRoutinesOn, linkedRoutines, dayProgress, grassRange, halfYear, liveBooks, liveRoutines, newStudyBook, removeBook, removeRoutine, studyCategories, studyCategoryFor, todayRoutines, recordStudy, routineFields, routineOn, saveRoutineDefinition, shiftStudyDate, studyEntries, studyWeek, weekProgress } from '../js/study-model.js';
 
 const makeRoutine = (state, { id = 'r', startDate = '2026-10-01', ...changes } = {}) => {
   const fields = routineFields({ title: '기출 풀이', category: '전공', days: [1, 2, 3, 4, 5], amount: 20, bookId: state.studyBooks[0]?.id, ...changes }, state.studyBooks);
@@ -122,6 +122,14 @@ test('오늘만 할 일은 그날에만 보이고, 잔디와 완료 수에 루�
   addTodo(state, '2026-10-04', '모의고사 오답 정리').done = true;
   assert.deepEqual(dayProgress(state, '2026-10-04'), { done: 1, total: 1, level: 4 });
   assert.throws(() => addTodo(state, '2026-10-01', '가'.repeat(101)), /100자/);
+});
+
+test('내일로 미룬 할 일은 다음 날에 보이고, 월말·연말도 넘어간다', () => {
+  const state = emptyData();
+  const todo = addTodo(state, '2026-12-31', '포트폴리오 정리');
+  assert.equal(postponeTodo(todo), '2026-12-31');
+  assert.deepEqual(todosOn(state, '2026-12-31'), []);
+  assert.deepEqual(todosOn(state, '2027-01-01').map(item => item.text), ['포트폴리오 정리']);
 });
 
 test('예전 저장 파일에는 할 일 목록이 없어도 빈 목록으로 채운다', () => {

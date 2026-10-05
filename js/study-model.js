@@ -170,6 +170,13 @@ export function addTodo(state, date, text) {
   return todo;
 }
 
+// 내일로 미루기: 할 일을 다음 날로 옮긴다. 되돌릴 때 쓰도록 원래 날짜를 돌려준다.
+export function postponeTodo(todo) {
+  const from = todo.date;
+  todo.date = shiftStudyDate(from, 1); todo.updatedAt = new Date().toISOString();
+  return from;
+}
+
 // 그날 루틴·할 일을 얼마나 끝냈는지: 0(안 함)~4(다 함). 예정된 루틴도 할 일도 없는 날은 null(쉬는 날).
 export function dayProgress(state, date) {
   const entries = studyEntries(state, date); const todos = todosOn(state, date);

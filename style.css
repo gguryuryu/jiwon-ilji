@@ -4988,6 +4988,22 @@ button.grass-cell:hover {
   text-decoration: line-through;
   text-decoration-color: rgb(var(--fg) / .25);
 }
+.study-todo-postpone {
+  flex: none;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12.5px;
+  opacity: 0;
+  transition: opacity .12s;
+}
+.study-todo-postpone:hover { background: var(--hover); color: var(--text); }
+.study-todo-row:hover .study-todo-postpone,
+.study-todo-row:focus-within .study-todo-postpone { opacity: 1; }
+@media (hover: none) { .study-todo-postpone { opacity: 1; } }
 .study-todo-delete {
   width: 28px;
   height: 28px;
@@ -4997,7 +5013,7 @@ button.grass-cell:hover {
   transition: opacity .12s;
 }
 .study-todo-row:hover .study-todo-delete,
-.study-todo-delete:focus-visible { opacity: 1; }
+.study-todo-row:focus-within .study-todo-delete { opacity: 1; }
 .study-todo-delete:hover { background: var(--hover); color: var(--danger); }
 @media (hover: none) { .study-todo-delete { opacity: 1; } }
 .study-todo-add {
