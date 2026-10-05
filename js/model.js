@@ -138,6 +138,8 @@ export function migrate(value) {
   for (const key of ['studyChapters', 'studyDays', 'studyMocks']) delete value[key];
   // 잠깐 있던 집중 루프 여러 줄 형식(lines)은 내용이 있는 첫 줄을 할 일 한 줄(body·link)로 되돌린다.
   for (const block of value.labBlocks) {
+    // 실행문 여러 줄: 첫 줄은 body, 그 아래 줄은 extra(글 목록)
+    if (block.extra !== undefined && !Array.isArray(block.extra)) block.extra = [];
     if (!Array.isArray(block.lines)) continue;
     const first = block.lines.find(line => line?.text?.trim() || line?.link) || block.lines[0] || {};
     block.body ??= first.text || ''; block.link ??= first.link || null;

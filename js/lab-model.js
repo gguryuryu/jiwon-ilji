@@ -170,6 +170,21 @@ export function completeLink(state, link, date) {
   return () => { log.done = false; log.updatedAt = new Date().toISOString(); };
 }
 
+// ---------- 블록 안의 모든 연결: 첫 줄(block.link)과 그 아래 연결한 줄(extra의 { link }) ----------
+export const blockLinks = block => [block.link, ...(block.extra || []).map(line => line && typeof line === 'object' ? line.link : null)].filter(Boolean);
+
+// 아직 안 끝낸 연결
+export const pendingLinks = (state, block, date) => blockLinks(block).filter(link => linkTarget(state, link) && !linkDone(state, link, date));
+
+// 블록의 연결을 모두 체크한다. 체크한 게 없으면 null, 있으면 { undo, label }(알림 뒤에 붙일 말).
+export function completeBlockLinks(state, block, date) {
+  const done = pendingLinks(state, block, date).map(link => ({ kind: linkTarget(state, link).kind, undo: completeLink(state, link, date) })).filter(item => item.undo);
+  if (!done.length) return null;
+  const kinds = new Set(done.map(item => item.kind));
+  const label = kinds.size > 1 ? '공부 기록·할 일에도 체크했어요' : kinds.has('routine') ? '공부 기록에도 체크했어요' : '목표 할 일을 체크했어요';
+  return { undo: () => done.forEach(item => item.undo()), label, kinds };
+}
+
 // 연결 메뉴에 보일 후보: 공부 기록 루틴(오늘 할 것 먼저)과 진행 중 목표의 남은 할 일
 export function linkChoices(state, date) {
   const today = new Set(studyEntries(state, date).map(entry => entry.routine.id));

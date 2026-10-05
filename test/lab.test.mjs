@@ -159,3 +159,36 @@ test('잠깐 있던 여러 줄 형식은 내용이 있는 첫 줄을 할 일 한
   ] }).labBlocks;
   assert.deepEqual(blocks.map(block => [block.body, block.link, 'lines' in block]), [['빨래 개기', link, false], ['', null, false]]);
 });
+
+test('실행문 여러 줄(extra)은 그대로 두고, 목록이 아닌 값은 빈 목록으로 고친다', () => {
+  const blocks = migrate({ postings: [], experiences: [], labBlocks: [
+    { id: 'a', kind: 'while', cond: '4', body: '응용수리', extra: ['오답 정리', '# 30분만'], runs: [] },
+    { id: 'b', kind: 'while', cond: '', body: '', extra: '깨진 값', runs: [] },
+    { id: 'c', kind: 'if', cond: '', body: '', runs: [] },
+  ] }).labBlocks;
+  assert.deepEqual(blocks.map(block => block.extra), [['오답 정리', '# 30분만'], [], undefined]);
+});
+
+test('블록 안의 연결(첫 줄과 아래 줄)을 끝까지 마치면 한꺼번에 체크하고, 되돌리기도 한 번에 된다', async () => {
+  const { blockLinks, completeBlockLinks, linkDone, pendingLinks } = await import('../js/lab-model.js');
+  const { routineFields, saveRoutineDefinition } = await import('../js/study-model.js');
+  const { emptyData } = await import('../js/state.js');
+  const state = emptyData();
+  const routine = { id: 'r', startDate: '2026-09-28', revisions: [] };
+  saveRoutineDefinition(routine, routineFields({ title: '민경채 15문제', category: 'NCS', days: [1, 2, 3, 4, 5] }, state.studyBooks), '2026-09-28');
+  state.studyRoutines.push(routine);
+  state.goals = [{ id: 'g', title: 'NCS', status: 'doing', tasks: [{ id: 't', text: '기본서 모듈', done: false }] }];
+  const routineLink = { type: 'routine', id: 'r' }; const taskLink = { type: 'task', goalId: 'g', taskId: 't' };
+  const block = { id: 'b', kind: 'while', cond: '4', body: '', link: routineLink, extra: ['오답 정리', { link: taskLink }, '# 메모'], runs: [] };
+
+  assert.deepEqual(blockLinks(block), [routineLink, taskLink]);
+  assert.equal(pendingLinks(state, block, '2026-10-01').length, 2);
+  const linked = completeBlockLinks(state, block, '2026-10-01');
+  assert.equal(linked.label, '공부 기록·할 일에도 체크했어요');
+  assert.equal(linkDone(state, routineLink, '2026-10-01'), true);
+  assert.equal(state.goals[0].tasks[0].done, true);
+  assert.equal(completeBlockLinks(state, block, '2026-10-01'), null); // 이미 다 체크했다
+  linked.undo();
+  assert.equal(linkDone(state, routineLink, '2026-10-01'), false);
+  assert.equal(state.goals[0].tasks[0].done, false);
+});

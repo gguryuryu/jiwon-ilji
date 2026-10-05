@@ -5,7 +5,7 @@ import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
 import { showToast } from './ui.js';
 import { escapeHtml as esc, nativeHost, todayKey } from './util.js';
-import { activeSeconds, breakLoop, clock, finishUntil, parseUntil, untilDate, untilState, finishBlock, liveBlocks, pauseLoop, resumeLoop, completeLink, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
+import { activeSeconds, asIdentifier, breakLoop, clock, completeBlockLinks, finishUntil, parseUntil, pendingLinks, untilDate, untilState, finishBlock, liveBlocks, pauseLoop, resumeLoop, elapsedLabel, finishPomodoro, linkCall, linkChoices, linkDone, linkTarget, minutesLabel, newLabBlock, parsePomodoro, pomodoroState, runIf, runsOn, runsThisWeek, startLoop } from './lab-model.js';
 
 const blockById = id => data.labBlocks.find(block => block.id === id);
 const bodyLabel = block => { const call = block.link && linkCall(data, block.link); return call ? `${call.ns}.${call.name}()` : block.body || '…'; };
@@ -24,10 +24,13 @@ const icon = (name, text) => `<svg class="lab-ico" viewBox="0 0 10 10" aria-hidd
 let freshId = ''; // 방금 실행한 블록: 주석·출력 줄이 타자 치듯 나타난다
 
 // 칸 너비를 글자에 맞춰 늘린다(보이지 않는 글자 복사본이 칸 크기를 정한다).
-const field = (block, name, placeholder) => {
+// 실행문 줄은 여러 개: 첫 줄은 body(연결도 이 줄), 그 아래 줄들은 extra[i]. '#'으로 시작하면 주석처럼 흐리게.
+const field = (block, name, placeholder, index = -1) => {
   const locked = name === 'cond' && Boolean(block.runningSince);
   const number = name === 'cond' && block.kind === 'while' && (parsePomodoro(block.cond) || parseUntil(block.cond));
-  return `<span class="lab-autosize lab-${name}${number ? ' lab-num' : ''}" data-value="${esc(block[name] || placeholder)}"><input size="1" data-field="${name}" data-id="${esc(block.id)}" value="${esc(block[name])}" placeholder="${placeholder}" spellcheck="false" autocomplete="off" aria-label="${block.kind} ${name === 'cond' ? '조건' : '할 일'}"${locked ? ' readonly title="실행 중인 조건이에요. break로 종료한 뒤 수정할 수 있어요."' : ''}></span>`;
+  const value = name === 'extra' ? block.extra[index] || '' : block[name] || '';
+  const comment = name !== 'cond' && value.trim().startsWith('#');
+  return `<span class="lab-autosize lab-${name === 'extra' ? 'body' : name}${number ? ' lab-num' : ''}${comment ? ' lab-commented' : ''}" data-value="${esc(value || placeholder)}"><input size="1" data-field="${name}"${name === 'extra' ? ` data-index="${index}"` : ''} data-id="${esc(block.id)}" value="${esc(value)}" placeholder="${placeholder}" spellcheck="false" autocomplete="off" aria-label="${block.kind} ${name === 'cond' ? '조건' : '할 일'}"${locked ? ' readonly title="실행 중인 조건이에요. break로 종료한 뒤 수정할 수 있어요."' : ''}></span>`;
 };
 
 // 블록 끝 주석: 오늘·이번 주에 몇 번 돌았는지(못 했다고 재촉하지는 않는다)
@@ -123,21 +126,34 @@ function gutterMark(block, today) {
 
 // 할 일 줄: 공부 기록 루틴·목표 할 일에 이었으면 routine.이름() / goal.목표.이름() 처럼 보인다.
 function bodyHtml(block, today) {
-  if (!block.link) return `${field(block, 'body', block.kind === 'while' ? '영단어 외우기' : '응용수리 10문제')}<button type="button" class="lab-link-btn" data-lab="link" data-id="${esc(block.id)}" aria-haspopup="menu" title="공부 기록 루틴이나 목표 할 일에 잇기">↗ 연결</button>`;
-  const call = linkCall(data, block.link); const target = linkTarget(data, block.link);
-  if (!call) return `<button type="button" class="lab-call broken" data-lab="link" data-id="${esc(block.id)}" aria-haspopup="menu" title="연결을 바꾸거나 끊기"><span class="lab-ns">?</span>.<span class="lab-fn">연결이_끊김</span><span class="lab-punct">()</span></button><span class="lab-comment lab-link-note"># 연결한 루틴·할 일을 지웠어요</span>`;
+  if (!block.link) return `${field(block, 'body', block.kind === 'while' ? '영단어 외우기' : '응용수리 10문제')}${linkButton(block, -1)}`;
+  return callHtml(block, block.link, -1, today);
+}
+
+// 아래 줄(extra[i]): 글이면 입력칸, 연결이면 함수 이름
+const extraHtml = (block, index, today) => {
+  const line = block.extra[index];
+  return line && typeof line === 'object' ? callHtml(block, line.link, index, today) : `${field(block, 'extra', '', index)}${linkButton(block, index)}`;
+};
+const indexAttr = index => index < 0 ? '' : ` data-index="${index}"`;
+const linkButton = (block, index) => `<button type="button" class="lab-link-btn" data-lab="link" data-id="${esc(block.id)}"${indexAttr(index)} aria-haspopup="menu" title="공부 기록 루틴이나 목표 할 일에 잇기 · routine. 이나 goal. 을 쳐도 돼요">↗ 연결</button>`;
+
+function callHtml(block, link, index, today) {
+  const call = linkCall(data, link); const target = linkTarget(data, link);
+  if (!call) return `<button type="button" class="lab-call broken" data-lab="link" data-id="${esc(block.id)}"${indexAttr(index)} aria-haspopup="menu" title="연결을 바꾸거나 끊기"><span class="lab-ns">?</span>.<span class="lab-fn">연결이_끊김</span><span class="lab-punct">()</span></button><span class="lab-comment lab-link-note"># 연결한 루틴·할 일을 지웠어요</span>`;
   const where = target.kind === 'routine' ? `공부 기록${target.routine.bookId ? ` · ${esc(data.studyBooks.find(book => book.id === target.routine.bookId)?.name || '')}` : ''}` : `목표 보드 · ${esc(target.goal.title || '목표')}`;
-  const done = linkDone(data, block.link, today);
+  const done = linkDone(data, link, today);
   // 이름을 누르면 연결 메뉴(바꾸기·끊기). 끝냈으면 이름이 청록으로 바뀌고 주석 끝에 '완료'가 붙는다.
-  return `<button type="button" class="lab-call${done ? ' done' : ''}" data-lab="link" data-id="${esc(block.id)}" aria-haspopup="menu" title="${target.kind === 'routine' ? '공부 기록 루틴' : '목표 보드 할 일'}에 이어져 있어요 · 눌러서 바꾸거나 끊기"><span class="lab-ns">${esc(call.ns)}</span>.<span class="lab-fn">${esc(call.name)}</span><span class="lab-punct">()</span></button><span class="lab-comment lab-link-note"># ↔ ${where}${done ? ' · 완료' : ''}</span>`;
+  return `<button type="button" class="lab-call${done ? ' done' : ''}" data-lab="link" data-id="${esc(block.id)}"${indexAttr(index)} aria-haspopup="menu" title="${target.kind === 'routine' ? '공부 기록 루틴' : '목표 보드 할 일'}에 이어져 있어요 · 눌러서 바꾸거나 끊기"><span class="lab-ns">${esc(call.ns)}</span>.<span class="lab-fn">${esc(call.name)}</span><span class="lab-punct">()</span></button><span class="lab-comment lab-link-note"># ↔ ${where}${done ? ' · 완료' : ''}</span>`;
 }
 
 // 연결 메뉴: 공부 기록 루틴(오늘 할 것 먼저) · 진행 중 목표의 남은 할 일
-function linkMenuHtml(block) {
+function linkMenuHtml(block, index = -1) {
   const { routines, tasks } = linkChoices(data, todayKey());
-  const item = choice => `<button type="button" role="menuitem" class="lab-link-item" data-lab="pick-link" data-id="${esc(block.id)}" data-link='${esc(JSON.stringify(choice.link))}'><span>${esc(choice.title || '이름 없음')}</span><small>${esc(choice.meta || '')}</small></button>`;
+  const item = choice => `<button type="button" role="menuitem" class="lab-link-item" data-lab="pick-link" data-id="${esc(block.id)}"${indexAttr(index)} data-link='${esc(JSON.stringify(choice.link))}'><span>${esc(choice.title || '이름 없음')}</span><small>${esc(choice.meta || '')}</small></button>`;
   const group = (title, list, empty) => `<div class="lab-link-group"><div class="lab-link-title">${title}</div>${list.length ? list.map(item).join('') : `<div class="lab-link-empty">${empty}</div>`}</div>`;
-  const unlink = block.link ? `<div class="lab-link-group lab-link-foot"><button type="button" role="menuitem" class="lab-link-item danger" data-lab="unlink" data-id="${esc(block.id)}"><span>연결 끊기</span><small>할 일을 다시 직접 적어요</small></button></div>` : '';
+  const linked = index < 0 ? block.link : typeof block.extra[index] === 'object' && block.extra[index]?.link;
+  const unlink = linked ? `<div class="lab-link-group lab-link-foot"><button type="button" role="menuitem" class="lab-link-item danger" data-lab="unlink" data-id="${esc(block.id)}"${indexAttr(index)}><span>연결 끊기</span><small>할 일을 다시 직접 적어요</small></button></div>` : '';
   return `<div class="lab-link-menu" role="menu" aria-label="연결할 루틴·할 일">${group('공부 기록 · 루틴', routines, '공부 기록 탭에 루틴이 없어요')}${group('목표 보드 · 진행 중 할 일', tasks, '진행 중 목표에 남은 할 일이 없어요')}${unlink}</div>`;
 }
 
@@ -172,6 +188,7 @@ function blockHtml(block, startLine, today) {
   const html = [`<section class="lab-block${running ? ' running' : ''}${block.pausedAt ? ' paused' : ''}${plan ? ' pomodoro' : ''}${block.id === freshId ? ' fresh' : ''}" data-kind="${block.kind}" data-id="${esc(block.id)}" aria-label="${block.kind} 블록"><div class="lab-block-lines">`,
     line(`<span class="lab-kw">${block.kind}</span><span class="lab-punct">&nbsp;</span>${field(block, 'cond', placeholder)}<span class="lab-punct">:</span>${condHint(block)}<span class="lab-controls"><button type="button" class="lab-remove lab-done-btn" data-lab="done" data-id="${esc(block.id)}" title="다 했어요: 블록을 치우고 기록만 남겨요">${icon('check', 'done')}</button><button type="button" class="lab-remove" data-lab="remove" data-id="${esc(block.id)}" aria-label="블록 지우기" title="지우기">${icon('x', 'del')}</button>${control}</span>`),
     line(`<span class="lab-indent"></span>${bodyHtml(block, today)}`, ' lab-body-line'),
+    ...(block.extra || []).map((_, index) => line(`<span class="lab-indent"></span>${extraHtml(block, index, today)}`, ' lab-body-line lab-extra-line')),
     running ? line(progressHtml(block), ' lab-progress') : '',
     comment ? line(`<span class="lab-indent"></span><span class="lab-comment">${esc(comment)}</span>`) : '',
     '</div>',
@@ -275,13 +292,16 @@ function outputHtml(today) {
 
 export function renderLab() {
   const today = todayKey();
-  let lineNumber = 1;
   // 블록 사이에만 빈 줄을 둔다(첫 블록은 1번 줄부터).
-  const blocks = liveBlocks(data).map((block, index) => {
-    const gap = index ? `<div class="lab-line lab-gap"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span></div>` : '';
+  let lineNumber = 1;
+  // 빈 줄은 모두 쓸 수 있는 줄: while · if 를 치면 그 자리에 새 블록이 생긴다(블록이 없으면 1번 줄부터).
+  const blankLine = at => `<div class="lab-line lab-add"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span><div class="lab-code"><span class="lab-autosize lab-new-line"><input data-field="new" data-at="${at}" spellcheck="false" autocomplete="off" aria-label="빈 줄: while 이나 if 를 치면 새 블록(wh 만 쳐도 자동 완성)"></span></div></div>`;
+  const live = liveBlocks(data);
+  const blocks = live.map((block, index) => {
+    const gap = index ? blankLine(index) : '';
     const { html, lines } = blockHtml(block, lineNumber, today);
     lineNumber += lines; return gap + html;
-  }).join('');
+  }).join('') + blankLine(live.length);
   const runningCount = liveBlocks(data).filter(block => block.runningSince).length;
   main.className = 'database-page lab-page';
   main.innerHTML = `<header class="page-header"><h1 class="page-title">집중 루프</h1></header>
@@ -291,14 +311,12 @@ export function renderLab() {
       <div data-now-slot>${nowHtml()}</div>
       <div class="lab-source">
         ${blocks}
-        <div class="lab-line lab-gap"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber++}</span></div>
-        <div class="lab-line lab-add"><span class="lab-gutter"></span><span class="lab-no" aria-hidden="true">${lineNumber}</span><div class="lab-code"><button type="button" class="lab-new" data-lab="add" data-kind="while" title="시간을 재거나 집중 타이머로 공부하기">+ while</button><button type="button" class="lab-new" data-lab="add" data-kind="if" title="조건에 맞춰 공부한 일을 기록하기">+ if</button></div></div>
       </div>
       ${outputHtml(today)}
       <div class="lab-statusbar${runningCount ? ' running' : ''}" data-status>${statusHtml(today)}</div>
     </div>`;
   freshId = '';
-  main.querySelectorAll('.lab-source input[data-field]').forEach(input => {
+  main.querySelectorAll('.lab-source input[data-field]:not([data-field="new"])').forEach(input => {
     input.addEventListener('input', () => {
       const block = blockById(input.dataset.id); if (!block) return;
       if (input.dataset.field === 'cond' && block.runningSince) {
@@ -306,8 +324,11 @@ export function renderLab() {
         input.parentElement.dataset.value = block.cond || input.placeholder;
         return;
       }
-      block[input.dataset.field] = input.value; block.updatedAt = new Date().toISOString();
-      input.parentElement.dataset.value = input.value || input.placeholder;
+      if (input.dataset.field === 'extra') block.extra[Number(input.dataset.index)] = input.value;
+      else block[input.dataset.field] = input.value;
+      block.updatedAt = new Date().toISOString();
+      fitWidth(input);
+      if (input.dataset.field !== 'cond') { input.parentElement.classList.toggle('lab-commented', input.value.trim().startsWith('#')); updateCompletion(input); }
       // 괄호에 숫자를 적는 순간 뽀모도로 힌트가 붙는다(다시 그리지 않고 힌트만 바꾼다).
       if (input.dataset.field === 'cond' && block.kind === 'while' && !block.runningSince) {
         const code = input.closest('.lab-code'); code.querySelector('.lab-hint')?.remove();
@@ -318,18 +339,312 @@ export function renderLab() {
       }
       scheduleSave();
     });
-    // Enter: 조건 → 할 일 칸으로, 할 일 칸에서는 입력을 마친다.
-    input.addEventListener('keydown', event => {
-      if (event.key !== 'Enter' || event.isComposing) return;
-      event.preventDefault();
-      if (input.dataset.field === 'cond') main.querySelector(`input[data-field="body"][data-id="${CSS.escape(input.dataset.id)}"]`)?.focus();
-      else input.blur();
-    });
+    // 코드 편집기처럼: Enter로 아래에 새 실행문, 줄 맨 앞 Backspace로 윗줄에 붙이기, ↑↓로 줄 이동, 여러 줄 붙여넣기
+    input.addEventListener('keydown', event => editorKey(event, input));
+    input.addEventListener('compositionend', () => composeEnded(input));
+    // 칸 너비: 글자를 칠 때 밀린 것 되돌리기, 한글 조합 중인 글자도 너비에 넣기
+    input.addEventListener('scroll', () => unscroll(input));
+    input.addEventListener('compositionstart', () => { composing.set(input, ''); });
+    input.addEventListener('compositionupdate', event => { composing.set(input, event.data || ''); fitWidth(input); });
+    input.addEventListener('compositionend', () => { composing.delete(input); fitWidth(input); });
+    input.addEventListener('blur', () => { if (completion?.input === input) closeCompletion(); });
+    if (input.dataset.field !== 'cond') input.addEventListener('paste', event => pasteLines(event, input));
+  });
+  // 빈 줄: while · if 를 쳐서 그 자리에 새 블록
+  main.querySelectorAll('.lab-source input[data-field="new"]').forEach(newLine => {
+    newLine.addEventListener('input', () => updateKeywordCompletion(newLine));
+    newLine.addEventListener('keydown', event => newLineKey(event, newLine));
+    newLine.addEventListener('compositionend', () => composeEnded(newLine));
+    newLine.addEventListener('blur', () => { if (completion?.input === newLine) closeCompletion(); });
   });
   startTicking();
 }
 
 const keepScroll = paint => { const top = window.scrollY; paint(); window.scrollTo({ top, behavior: 'instant' }); };
+
+// ---------- 연결: 첫 줄(block.link) 또는 아래 줄(extra[i] = { link }) ----------
+const lineOf = element => element.dataset.index === undefined ? -1 : Number(element.dataset.index);
+function setLink(block, index, link) {
+  if (index < 0) block.link = link; else block.extra[index] = { link };
+  block.updatedAt = new Date().toISOString();
+}
+
+// 중간에 멈췄거나 '다 했어요'를 눌렀을 때: 아직 안 끝낸 연결이 있으면 알림에 '체크' 버튼을 둔다(했다고 판단하면 누르게).
+function checkOffer(block, date) {
+  const pending = pendingLinks(data, block, date); if (!pending.length) return [];
+  const kinds = new Set(pending.map(link => linkTarget(data, link).kind));
+  const label = kinds.size > 1 ? '공부 기록·할 일 체크' : kinds.has('routine') ? '공부 기록에 체크' : '할 일 체크';
+  return [{ label, run: () => { const linked = completeBlockLinks(data, block, date); persist(); keepScroll(renderLab); if (linked) showToast(linked.label, { label: '되돌리기', run: () => { linked.undo(); persist(); keepScroll(renderLab); } }); } }];
+}
+
+// ---------- 칸 너비: 보이지 않는 글자 복사본(data-value)이 칸 크기를 정한다 ----------
+// 조합 중인 글자가 칸 값에 아직 없으면 커서 자리에 끼워 넣어 잰다(이미 있으면 그대로).
+const composing = new WeakMap();
+function fitWidth(input) {
+  const value = input.value; const data = composing.get(input) || '';
+  const start = input.selectionStart ?? value.length; const end = input.selectionEnd ?? start;
+  const included = !data || value.slice(start, end) === data || value.slice(Math.max(0, start - data.length), start) === data;
+  input.parentElement.dataset.value = (included ? value : value.slice(0, start) + data + value.slice(end)) || input.placeholder;
+  unscroll(input);
+}
+
+// 글자를 치는 순간에는 칸이 아직 안 늘어나 브라우저가 글자를 왼쪽으로 밀어(스크롤) 앞 글자가 가려진다.
+// 칸이 글자에 맞춰 늘어난 뒤에는 밀린 것을 되돌린다.
+function unscroll(input) {
+  // WebKit은 커서 자리 때문에 내용 폭이 칸보다 2px쯤 크게 나온다. 그 정도 차이면 다 들어간 것으로 본다.
+  if (input.scrollLeft && input.scrollWidth <= input.clientWidth + 3) input.scrollLeft = 0;
+}
+
+// ---------- 실행문 여러 줄 편집 ----------
+// 줄 번호: body는 -1, extra[i]는 i. 연결해 둔 블록은 body 자리에 함수 이름이 있어 글로 고칠 수 없다.
+const lineText = (block, index) => index < 0 ? (block.link ? null : block.body || '') : typeof block.extra[index] === 'object' && block.extra[index] ? null : block.extra[index] || '';
+const setLine = (block, index, value) => { if (index < 0) block.body = value; else block.extra[index] = value; };
+const lineIndex = input => input.dataset.field === 'body' ? -1 : Number(input.dataset.index);
+
+// 다시 그린 뒤 그 줄(커서 자리까지)로 돌아간다.
+function focusLine(id, index, caret) {
+  const selector = index < 0 ? `input[data-field="body"][data-id="${CSS.escape(id)}"]` : `input[data-field="extra"][data-id="${CSS.escape(id)}"][data-index="${index}"]`;
+  const input = main.querySelector(selector); if (!input) return;
+  input.focus({ preventScroll: false });
+  const at = caret === 'end' ? input.value.length : Math.min(caret, input.value.length);
+  input.setSelectionRange(at, at);
+}
+
+function changed(block) { block.updatedAt = new Date().toISOString(); persist(); keepScroll(renderLab); }
+
+function editorKey(event, input) {
+  if (completionKey(event, input)) return;
+  // 한글을 쓰는 중(조합 중)에 누른 Enter는 마지막 글자가 칸에 들어간 직후에 줄을 나눈다(한 번만 눌러도 되게).
+  if (event.isComposing || event.keyCode === 229) {
+    if (event.key === 'Enter' || event.keyCode === 229 && event.code === 'Enter') input.dataset.enterAfterCompose = '1';
+    return;
+  }
+  const block = blockById(input.dataset.id); if (!block) return;
+  const field = input.dataset.field;
+  // ↑↓: 위아래 줄로(블록을 넘어가도 이어서)
+  if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
+    const inputs = [...main.querySelectorAll('.lab-source input[data-field]')];
+    const target = inputs[inputs.indexOf(input) + (event.key === 'ArrowUp' ? -1 : 1)]; if (!target) return;
+    event.preventDefault();
+    const at = Math.min(input.selectionStart ?? 0, target.value.length);
+    target.focus(); target.setSelectionRange(at, at);
+    return;
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (field === 'cond') {
+      // 조건 → 첫 실행문으로(연결해 둔 블록이면 그 아래 줄, 없으면 새로 만든다)
+      if (!block.link) { focusLine(block.id, -1, 'end'); return; }
+      if (block.extra?.length) { focusLine(block.id, 0, 'end'); return; }
+      block.extra = ['']; changed(block); focusLine(block.id, 0, 0); return;
+    }
+    // 블록의 마지막 실행문이 비어 있으면 파이썬에서 들여쓰기를 빠져나오듯 블록 밖으로(다음 블록이나 맨 아래 빈 줄)
+    const index = lineIndex(input); const lastIndex = (block.extra?.length || 0) - 1;
+    if (!input.value && index === lastIndex) { leaveBlock(block, index); return; }
+    splitLine(block, input);
+    return;
+  }
+  // 줄 맨 앞 Backspace: 윗줄 끝에 붙인다(윗줄이 연결한 함수 이름이면 빈 줄만 지운다).
+  if (event.key === 'Backspace' && field === 'extra' && input.selectionStart === 0 && input.selectionEnd === 0) {
+    const index = lineIndex(input); const above = lineText(block, index - 1);
+    if (above === null && input.value) return;
+    event.preventDefault();
+    block.extra.splice(index, 1);
+    if (above !== null) setLine(block, index - 1, above + input.value);
+    changed(block);
+    if (above === null) focusLine(block.id, index, 0); else focusLine(block.id, index - 1, above.length);
+  }
+}
+
+function leaveBlock(block, index) {
+  if (index >= 0) { block.extra.splice(index, 1); changed(block); }
+  // 블록 바로 아래 빈 줄로(거기서 wh 를 치면 그 자리에 다음 블록)
+  const at = liveBlocks(data).indexOf(block) + 1;
+  main.querySelector(`.lab-source input[data-field="new"][data-at="${at}"]`)?.focus();
+}
+
+// 커서 뒤 글자는 새 줄로 넘긴다.
+function splitLine(block, input) {
+  const index = lineIndex(input); const at = input.selectionStart ?? input.value.length;
+  const before = input.value.slice(0, at); const after = input.value.slice(input.selectionEnd ?? at);
+  setLine(block, index, before);
+  (block.extra ||= []).splice(index + 1, 0, after);
+  changed(block); focusLine(block.id, index + 1, 0);
+}
+
+function composeEnded(input) {
+  if (!input.dataset.enterAfterCompose) return;
+  delete input.dataset.enterAfterCompose;
+  // 자동 완성 목록이 떠 있으면 줄을 나누지 않고 고른 항목을 넣는다.
+  if (completion?.input === input) { setTimeout(() => { if (input.dataset.field === 'new') updateKeywordCompletion(input); else updateCompletion(input); acceptCompletion(); }, 0); return; }
+  // 확정된 글자가 칸과 데이터에 들어간 뒤(input 이벤트 다음)에 나눈다.
+  setTimeout(() => {
+    const block = blockById(input.dataset.id); if (!block || !input.isConnected) return;
+    if (input.dataset.field === 'cond') { if (!block.link) focusLine(block.id, -1, 'end'); return; }
+    setLine(block, lineIndex(input), input.value); splitLine(block, input);
+  }, 0);
+}
+
+// ---------- 자동 완성(IDE처럼) ----------
+// · 맨 아래 새 줄: wh → while, i → if. 고르면 새 블록이 생긴다.
+// · 실행문 줄 맨 앞: ro → routine., go → goal. 고르면 이어서 목록이 뜬다.
+// · routine. · goal. 다음: 공부 기록 루틴·목표 할 일. 고르면 그 줄이 연결되어 블록을 끝까지 마칠 때 같이 체크된다.
+let completion = null; // { input, kind, items, active, render(item), accept(item), empty }
+const squash = text => String(text || '').toLocaleLowerCase().replace(/[\s_]+/g, '');
+const KEYWORDS = [
+  { word: 'while', hint: '시간 재기·집중 타이머 · while 4: 뽀모도로 · while 18시까지:' },
+  { word: 'if', hint: '조건에 맞춰 한 일 기록 · if 밥 먹고 나면:' },
+];
+const NAMESPACES = [
+  { word: 'routine', hint: '공부 기록 루틴', dot: true },
+  { word: 'goal', hint: '목표 보드 · 진행 중 할 일', dot: true },
+];
+const wordRow = item => `<code><span class="lab-kw">${esc(item.word)}</span>${item.dot ? '<span class="lab-punct">.</span>' : ''}</code><small>${esc(item.hint)}</small>`;
+
+function linkItems(ns, query) {
+  const { routines, tasks } = linkChoices(data, todayKey());
+  const list = ns === 'routine'
+    ? routines.map(choice => ({ ...choice, ns: 'routine', name: asIdentifier(choice.title) }))
+    : tasks.map(choice => ({ ...choice, ns: `goal.${asIdentifier(choice.meta)}`, name: asIdentifier(choice.title) }));
+  const wanted = squash(query);
+  return list.filter(item => !wanted || squash(`${item.ns}.${item.name}`).includes(wanted) || squash(item.title).includes(wanted)).slice(0, 8);
+}
+
+function openCompletion(input, options) {
+  const active = completion?.input === input && completion.kind === options.kind ? Math.min(completion.active, Math.max(0, options.items.length - 1)) : 0;
+  completion = { input, active, ...options };
+  renderCompletion();
+}
+
+// 실행문 줄: routine. · goal. 다음이면 목록, 줄 맨 앞 첫 단어가 routine·goal의 앞부분이면 이름공간(영어 메모를 쓸 때 방해되지 않게 첫 단어만)
+function updateCompletion(input) {
+  const before = input.value.slice(0, input.selectionStart ?? input.value.length);
+  const link = before.match(/(?:^|\s)(routine|goal)\.([^\s()]*)$/i);
+  if (link) {
+    const ns = link[1].toLowerCase();
+    openCompletion(input, {
+      kind: 'link', items: linkItems(ns, link[2]),
+      render: item => `<code><span class="lab-ns">${esc(item.ns)}</span>.<span class="lab-fn">${esc(item.name)}</span><span class="lab-punct">()</span></code><small>${esc(item.meta || '')}</small>`,
+      empty: `# ${ns === 'routine' ? '맞는 루틴이 없어요 · 공부 기록 탭에서 루틴을 만들어요' : '진행 중 목표에 맞는 할 일이 없어요'}`,
+      accept: item => acceptLink(input, item),
+    });
+    return;
+  }
+  const word = before.match(/^\s*([a-z]+)$/i)?.[1]?.toLowerCase();
+  const items = word ? NAMESPACES.filter(item => item.word.startsWith(word)) : [];
+  if (!items.length) { closeCompletion(); return; }
+  openCompletion(input, {
+    kind: 'namespace', items, render: wordRow,
+    // 첫 단어를 routine. · goal. 로 바꾸고, 이어서 목록을 띄운다.
+    accept: item => {
+      const at = input.selectionStart ?? input.value.length;
+      input.focus(); input.setRangeText(`${item.word}.`, before.length - word.length, at, 'end');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    },
+  });
+}
+
+// 맨 아래 새 줄: while · if
+function updateKeywordCompletion(input) {
+  const word = input.value.match(/^\s*([a-z]+)$/i)?.[1]?.toLowerCase();
+  const items = word ? KEYWORDS.filter(item => item.word.startsWith(word)) : [];
+  if (!items.length) { closeCompletion(); return; }
+  openCompletion(input, { kind: 'keyword', items, render: wordRow, accept: item => createBlock(item.word, '', Number(input.dataset.at)) });
+}
+
+function renderCompletion() {
+  main.querySelectorAll('.lab-complete').forEach(box => box.remove());
+  if (!completion?.input.isConnected) { completion = null; return; }
+  const { input, items, active, render, empty } = completion;
+  const code = input.closest('.lab-code'); const span = input.parentElement;
+  const rows = items.map((item, index) => `<div class="lab-complete-item${index === active ? ' active' : ''}" role="option" aria-selected="${index === active}" data-complete="${index}">${render(item)}</div>`).join('');
+  code.insertAdjacentHTML('beforeend', `<div class="lab-complete" role="listbox" aria-label="자동 완성" style="--x:${span.offsetLeft}px">${rows || `<div class="lab-complete-empty">${esc(empty || '')}</div>`}<div class="lab-complete-foot">↑↓ 고르기 · Enter·Tab 넣기 · Esc 닫기</div></div>`);
+}
+
+function closeCompletion() {
+  completion = null;
+  main.querySelectorAll('.lab-complete').forEach(box => box.remove());
+}
+
+function acceptCompletion(index = completion?.active ?? 0) {
+  const current = completion; const item = current?.items[index]; closeCompletion();
+  if (item && current.input.isConnected) current.accept(item);
+}
+
+function acceptLink(input, item) {
+  const block = blockById(input.dataset.id); if (!block) return;
+  const line = lineIndex(input);
+  if (line < 0) block.body = '';
+  setLink(block, line, item.link);
+  // 코드 편집기처럼 다음 줄로 이어서 적는다(다음 줄이 없으면 빈 줄을 만든다. 안 쓰면 Backspace로 지운다).
+  const next = (block.extra ||= [])[line + 1];
+  if (next === undefined || typeof next === 'object') block.extra.splice(line + 1, 0, '');
+  persist(); keepScroll(renderLab);
+  focusLine(block.id, line + 1, 'end');
+}
+
+// 새 블록: while·if 키워드로 그 빈 줄 자리(at번째 블록 앞)에 만들고 조건 칸으로(조건까지 적었으면 실행문 칸으로) 간다.
+function createBlock(kind, cond, at) {
+  const created = newLabBlock(kind); created.cond = cond;
+  const before = liveBlocks(data)[at];
+  if (before) data.labBlocks.splice(data.labBlocks.indexOf(before), 0, created); else data.labBlocks.push(created);
+  persist(); keepScroll(renderLab);
+  const target = main.querySelector(`input[data-field="${cond ? 'body' : 'cond'}"][data-id="${CSS.escape(created.id)}"]`);
+  target?.focus(); target?.setSelectionRange(target.value.length, target.value.length);
+}
+
+// 목록이 떠 있을 때의 키: ↑↓ 고르기, Enter·Tab 넣기, Esc 닫기. 처리했으면 true.
+function completionKey(event, input) {
+  if (completion?.input !== input) return false;
+  if (event.isComposing || event.keyCode === 229) { if (event.key === 'Enter') input.dataset.enterAfterCompose = '1'; return true; }
+  const count = completion.items.length;
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (count) completion.active = (completion.active + (event.key === 'ArrowDown' ? 1 : count - 1)) % count;
+    renderCompletion(); return true;
+  }
+  if ((event.key === 'Enter' || event.key === 'Tab') && count) { event.preventDefault(); acceptCompletion(); return true; }
+  if (event.key === 'Escape') { event.preventDefault(); closeCompletion(); return true; }
+  return false;
+}
+
+// 빈 줄의 키: 목록이 없을 때 Enter는 'while 4:' 처럼 적은 대로 블록을 만든다. ↑↓는 위아래 줄로.
+function newLineKey(event, input) {
+  if (completionKey(event, input) || event.isComposing || event.keyCode === 229) return;
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    const inputs = [...main.querySelectorAll('.lab-source input[data-field]')];
+    const target = inputs[inputs.indexOf(input) + (event.key === 'ArrowUp' ? -1 : 1)]; if (!target) return;
+    event.preventDefault(); target.focus(); target.setSelectionRange(target.value.length, target.value.length);
+    return;
+  }
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  const typed = input.value.trim().match(/^(while|if)\b\s*(.*?)\s*:?\s*$/i);
+  if (typed) { createBlock(typed[1].toLowerCase(), typed[2], Number(input.dataset.at)); return; }
+  if (input.value.trim()) showToast('while 이나 if 로 시작해 주세요 · 예: while 4:  ·  if 밥 먹고 나면:');
+}
+
+// 목록을 마우스로 고를 때는 입력칸 초점을 잃지 않게 한다.
+main.addEventListener('mousedown', event => {
+  const row = event.target.closest('.lab-complete-item'); if (!row) return;
+  event.preventDefault(); acceptCompletion(Number(row.dataset.complete));
+});
+
+// 여러 줄을 붙여넣으면 줄마다 실행문이 된다.
+function pasteLines(event, input) {
+  const text = event.clipboardData?.getData('text') || '';
+  if (!/\r?\n/.test(text)) return;
+  event.preventDefault();
+  const block = blockById(input.dataset.id); if (!block) return;
+  const index = lineIndex(input); const at = input.selectionStart ?? input.value.length;
+  const before = input.value.slice(0, at); const after = input.value.slice(input.selectionEnd ?? at);
+  const pasted = text.replace(/\r/g, '').replace(/\n+$/, '').split('\n');
+  const last = pasted.length - 1;
+  setLine(block, index, before + pasted[0]);
+  (block.extra ||= []).splice(index + 1, 0, ...pasted.slice(1).map((line, i) => i === last - 1 ? line + after : line));
+  if (!last) setLine(block, index, before + pasted[0] + after);
+  changed(block); focusLine(block.id, index + last, last ? pasted[last].length : before.length + pasted[0].length);
+}
 
 // ---------- 맥 앱의 작은 타이머 창 ----------
 // 전용 창(맥 지원일지.app · 윈도우 앱) 안에서만 보이는 버튼. 작은 창의 pause·break는 여기로 돌아와 본 창에서 처리한다.
@@ -353,11 +668,6 @@ main.addEventListener('click', event => {
   const button = event.target.closest('[data-lab]'); if (!button) return;
   const block = blockById(button.dataset.id); const action = button.dataset.lab;
   if (action === 'open-mini') { nativeBridge()?.postMessage({ type: 'openMini' }); return; }
-  if (action === 'add') {
-    const created = newLabBlock(button.dataset.kind); data.labBlocks.push(created); persist(); keepScroll(renderLab);
-    main.querySelector(`input[data-field="cond"][data-id="${CSS.escape(created.id)}"]`)?.focus();
-    return;
-  }
   if (!block) return;
   if (action === 'show-now') { nowId = block.id; keepScroll(renderLab); return; }
   if (action === 'pause') { pauseLoop(block); persist(); keepScroll(renderLab); showToast('일시정지 · 멈춘 동안은 시간이 흐르지 않아요'); return; }
@@ -365,22 +675,23 @@ main.addEventListener('click', event => {
   if (action === 'done') {
     // 다 했어요: 블록을 치우고 기록만 남긴다. 연결한 루틴·할 일이 남아 있으면 같이 체크할지 알림에서 고른다.
     const run = finishBlock(block); persist(); keepScroll(renderLab);
-    const target = linkTarget(data, block.link); const date = run?.date || todayKey();
-    const check = target && !linkDone(data, block.link, date) ? [{ label: target.kind === 'routine' ? '공부 기록에 체크' : '할 일 체크', run: () => { const undo = completeLink(data, block.link, date); persist(); keepScroll(renderLab); if (undo) showToast(target.kind === 'routine' ? '공부 기록에도 체크했어요' : '목표 할 일을 체크했어요', { label: '되돌리기', run: () => { undo(); persist(); keepScroll(renderLab); } }); } }] : [];
+    const check = checkOffer(block, run?.date || todayKey());
     showToast(`${block.kind} ${block.cond || '…'}: done · 기록은 OUTPUT에 남겨요`, [...check, { label: '되돌리기', run: () => { block.doneAt = ''; if (run) { block.runs = block.runs.filter(item => item !== run); block.runningSince = run.at; } persist(); keepScroll(renderLab); } }]);
     return;
   }
   if (action === 'link') {
     const code = button.closest('.lab-code'); const open = code.querySelector('.lab-link-menu'); closeLinkMenu(); if (open) return;
-    code.insertAdjacentHTML('beforeend', linkMenuHtml(block)); code.classList.add('menu-open');
+    code.insertAdjacentHTML('beforeend', linkMenuHtml(block, lineOf(button))); code.classList.add('menu-open');
     placeLinkMenu(code.querySelector('.lab-link-menu'));
     code.querySelector('.lab-link-item')?.focus({ preventScroll: true, focusVisible: keyboardUsed });
     return;
   }
-  if (action === 'pick-link') { block.link = JSON.parse(button.dataset.link); block.updatedAt = new Date().toISOString(); persist(); keepScroll(renderLab); return; }
+  if (action === 'pick-link') { setLink(block, lineOf(button), JSON.parse(button.dataset.link)); persist(); keepScroll(renderLab); return; }
   if (action === 'unlink') {
-    const before = block.link; block.link = null; persist(); keepScroll(renderLab);
-    showToast('연결을 끊었어요', { label: '되돌리기', run: () => { block.link = before; persist(); keepScroll(renderLab); } });
+    const index = lineOf(button); const before = index < 0 ? block.link : block.extra[index];
+    if (index < 0) block.link = null; else block.extra[index] = '';
+    block.updatedAt = new Date().toISOString(); persist(); keepScroll(renderLab);
+    showToast('연결을 끊었어요', { label: '되돌리기', run: () => { if (index < 0) block.link = before; else block.extra[index] = before; persist(); keepScroll(renderLab); } });
     return;
   }
   if (action === 'start') {
@@ -396,13 +707,11 @@ main.addEventListener('click', event => {
     if (!run) return;
     const undoRun = { label: '되돌리기', run: () => { block.runs = block.runs.filter(item => item !== run); block.runningSince = run.at; persist(); keepScroll(renderLab); } };
     // 중간에 멈췄을 때는 연결된 루틴·할 일을 바로 체크하지 않고, 했다고 판단하면 누르게 한다.
-    const target = linkTarget(data, block.link);
-    const check = target && !linkDone(data, block.link, run.date) ? [{ label: target.kind === 'routine' ? '공부 기록에 체크' : '할 일 체크', run: () => { const undo = completeLink(data, block.link, run.date); persist(); keepScroll(renderLab); if (undo) showToast(target.kind === 'routine' ? '공부 기록에도 체크했어요' : '목표 할 일을 체크했어요', { label: '되돌리기', run: () => { undo(); persist(); keepScroll(renderLab); } }); } }] : [];
+    const check = checkOffer(block, run.date);
     showToast(`루프 탈출 · ${minutesLabel(run.minutes)}${run.rounds ? ` · ${run.rounds}라운드` : ''}`, [...check, undoRun]);
   } else if (action === 'run-if') {
-    const run = runIf(block); const undoLink = completeLink(data, block.link, run.date); freshId = block.id; persist(); keepScroll(renderLab);
-    const linked = undoLink ? (linkTarget(data, block.link).kind === 'routine' ? ' · 공부 기록에도 체크' : ' · 목표 할 일 체크') : '';
-    showToast(`if ${block.cond || '…'}: ${bodyLabel(block)} ✓${linked}`, { label: '되돌리기', run: () => { block.runs = block.runs.filter(item => item !== run); undoLink?.(); persist(); keepScroll(renderLab); } });
+    const run = runIf(block); const linked = completeBlockLinks(data, block, run.date); freshId = block.id; persist(); keepScroll(renderLab);
+    showToast(`if ${block.cond || '…'}: ${bodyLabel(block)} ✓${linked ? ` · ${linked.label}` : ''}`, { label: '되돌리기', run: () => { block.runs = block.runs.filter(item => item !== run); linked?.undo(); persist(); keepScroll(renderLab); } });
   } else if (action === 'remove') {
     const index = data.labBlocks.indexOf(block);
     data.labBlocks.splice(index, 1); persist(); keepScroll(renderLab);
@@ -443,9 +752,8 @@ function tick() {
     const until = untilState(block);
     if (until) {
       if (until.done) {
-        const finished = finishUntil(block); const undoLink = finished && completeLink(data, block.link, finished.date); freshId = block.id; persist(); chime(3);
-        const linked = undoLink ? (linkTarget(data, block.link).kind === 'routine' ? ' · 공부 기록에도 체크했어요' : ' · 목표 할 일을 체크했어요') : '';
-        showToast(`${finished.until} 됐어요 · ${minutesLabel(finished.minutes)} 했어요${linked}`, undoLink ? { label: '체크 되돌리기', run: () => { undoLink(); persist(); if (view === 'lab') keepScroll(renderLab); } } : null);
+        const finished = finishUntil(block); const linked = finished && completeBlockLinks(data, block, finished.date); freshId = block.id; persist(); chime(3);
+        showToast(`${finished.until} 됐어요 · ${minutesLabel(finished.minutes)} 했어요${linked ? ` · ${linked.label}` : ''}`, linked ? { label: '체크 되돌리기', run: () => { linked.undo(); persist(); if (view === 'lab') keepScroll(renderLab); } } : null);
         if (view === 'lab') keepScroll(renderLab);
         continue;
       }
@@ -460,9 +768,8 @@ function tick() {
     if (plan) {
       const state = pomodoroState(plan, elapsedSeconds(block));
       if (state.done) {
-        const finished = finishPomodoro(block, plan); const undoLink = finished && completeLink(data, block.link, finished.date); freshId = block.id; persist(); chime(3);
-        const linked = undoLink ? (linkTarget(data, block.link).kind === 'routine' ? ' · 공부 기록에도 체크했어요' : ' · 목표 할 일을 체크했어요') : '';
-        showToast(`${plan.rounds}라운드 완료 · ${minutesLabel(plan.rounds * plan.focus)} 집중했어요${linked}`, undoLink ? { label: '체크 되돌리기', run: () => { undoLink(); persist(); if (view === 'lab') keepScroll(renderLab); } } : null);
+        const finished = finishPomodoro(block, plan); const linked = finished && completeBlockLinks(data, block, finished.date); freshId = block.id; persist(); chime(3);
+        showToast(`${plan.rounds}라운드 완료 · ${minutesLabel(plan.rounds * plan.focus)} 집중했어요${linked ? ` · ${linked.label}` : ''}`, linked ? { label: '체크 되돌리기', run: () => { linked.undo(); persist(); if (view === 'lab') keepScroll(renderLab); } } : null);
         if (view === 'lab') keepScroll(renderLab);
         continue;
       }

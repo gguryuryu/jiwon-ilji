@@ -5449,6 +5449,12 @@ button.grass-cell:hover {
   vertical-align: top;
 }
 
+/* 쓰는 중에는 양옆에 같은 여백(5px)을 둔다. 왼쪽은 바깥으로 넓혀 글자 자리는 그대로.
+   맥 앱(WebKit)은 글자 뒤 커서 자리로 2px를 더 써서, 칸 폭에 그만큼 더해야 글자가 왼쪽으로 밀려 잘리지 않는다. */
+.lab-autosize:focus-within { margin-left: -4px; }
+.lab-autosize:focus-within::after { padding: 0 7px 0 5px; }
+.lab-autosize:focus-within input { padding: 0 5px; }
+
 .lab-autosize::after {
   display: inline-block;
   max-width: 100%;
@@ -5482,10 +5488,46 @@ button.grass-cell:hover {
 
 .lab-autosize input::placeholder { color: var(--text-3); opacity: .55; }
 .lab-autosize input:hover { background: rgb(var(--fg) / .04); }
-.lab-autosize input:focus { background: rgb(var(--fg) / .07); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+/* 쓰는 중에는 테두리 없이 바탕만 살짝 밝혀 코드 편집기처럼 보이게 */
+.lab-autosize input:focus { background: rgb(var(--fg) / .07); }
 .lab-autosize input[readonly] { cursor: default; }
 .lab-autosize input[readonly]:hover { background: transparent; }
 .lab-cond { color: var(--lab-str); }
+/* 자동 완성(routine. · goal.): 입력칸 바로 아래에 코드 편집기처럼 */
+.lab-complete {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% - 2px);
+  left: var(--x, 0);
+  min-width: 320px;
+  max-width: min(520px, 90vw);
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--elevated);
+  box-shadow: 0 12px 32px rgb(0 0 0 / calc(.45 * var(--shade)));
+  font-family: var(--mono);
+  font-size: 12.5px;
+  white-space: normal;
+}
+.lab-complete-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.lab-complete-item code { overflow: hidden; font: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.lab-complete-item small { flex: none; color: var(--text-3); font-family: "Pretendard Variable", sans-serif; font-size: 11.5px; }
+.lab-complete-item:hover { background: var(--hover); }
+.lab-complete-item.active { background: var(--accent-soft); }
+.lab-complete-empty { padding: 6px 8px; color: var(--lab-comment); }
+.lab-complete-foot { margin-top: 4px; padding: 4px 8px 2px; border-top: 1px solid var(--border); color: var(--text-3); font-size: 11px; }
+
+/* '#'으로 시작하는 실행문 줄은 주석처럼 흐리게 */
+.lab-autosize.lab-commented input { color: var(--lab-comment); }
 .lab-cond.lab-num, .lab-num { color: var(--lab-num); }
 .lab-body { color: var(--text); }
 
@@ -5621,8 +5663,7 @@ button.grass-cell:hover {
 }
 
 .lab-run,
-.lab-remove,
-.lab-new {
+.lab-remove {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5937,11 +5978,14 @@ button.grass-cell:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* 맨 아래 줄: + while · + if */
-.lab-add .lab-code { gap: 8px; min-height: 32px; }
-.lab-new { height: 28px; color: var(--text-2); background: var(--hover); box-shadow: inset 0 0 0 1px var(--border); }
-.lab-new:hover { background: var(--hover); color: var(--lab-kw); }
-.lab-new:focus-visible, .lab-run:focus-visible, .lab-remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 맨 아래 빈 줄: 칸 상자 없이 줄 전체가 쓰는 자리(코드 편집기의 빈 줄처럼 커서만 보인다) */
+.lab-add .lab-code { position: relative; }
+.lab-new-line { flex: 1; margin-left: 0 !important; }
+.lab-new-line::after { content: none; }
+.lab-new-line input,
+.lab-new-line input:hover,
+.lab-new-line input:focus { position: static; width: 100%; padding: 0 1px !important; background: transparent; box-shadow: none; }
+.lab-run:focus-visible, .lab-remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* 방금 실행한 블록: 주석·출력 줄이 타자 치듯 나타난다 */
 .lab-block.fresh .lab-comment,
