@@ -5353,6 +5353,7 @@ button.grass-cell:hover {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  margin-left: auto;
   color: var(--lab-live);
 }
 
@@ -5467,7 +5468,8 @@ button.grass-cell:hover {
   width: 100%;
   min-width: 0;
   height: 24px;
-  margin: 0;
+  /* 감싼 칸(줄 높이 28px)의 가운데에 둬서 while·연결 버튼과 글자 높이를 맞춘다 */
+  margin: auto 0;
   padding: 0 1px;
   border: 0;
   border-radius: 4px;
@@ -5523,6 +5525,10 @@ button.grass-cell:hover {
 
 /* '↗ 연결' 버튼: 할 일 글자 바로 뒤, 그 줄에 마우스를 올렸을 때만 */
 .lab-link-btn {
+  /* 줄 높이(28px)를 물려받으면 22px 버튼 안에서 글자가 아래로 처지므로 가운데 정렬 */
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
   height: 22px;
   margin-left: 12px;
   padding: 0 8px;
@@ -5738,11 +5744,29 @@ button.grass-cell:hover {
 .lab-round { color: var(--text-3); font-size: 12.5px; }
 
 .lab-iter { color: var(--text-2); font-size: 13px; }
+
+/* 맥 앱에서만 보이는 '작은 창' 버튼(편집기 탭 줄 오른쪽 끝) */
+.lab-mini-open {
+  margin-left: 10px;
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.lab-mini-open:hover { background: var(--hover); color: var(--text); }
 .lab-iter b { color: var(--lab-kw); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-/* ---------- 지금 집중할 것: 편집기 맨 위 패널(타이머는 여기 하나만) ---------- */
+/* ---------- 지금 집중할 것: 편집기 맨 위 패널(타이머는 두 개까지 나란히) ---------- */
 .lab-now {
   --dial: var(--lab-focus);
+  /* 한 개·두 개·대기 중 모두 같은 높이(시계 168px + 위아래 여백): 타이머를 켜고 끌 때 아래 코드가 움직이지 않게 */
+  min-height: 209px;
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
   align-items: center;
@@ -5808,12 +5832,39 @@ button.grass-cell:hover {
   min-width: 0;
 }
 
-.lab-now-tabs {
+/* 두 개가 돌 때: 반씩 나란히, 시계를 조금 작게 */
+.lab-now-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-bottom: 1px solid var(--border);
+}
+.lab-now.compact {
+  min-height: 208px;
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 20px;
+  padding: 16px 20px;
+  border-bottom: 0;
+}
+.lab-now.compact + .lab-now.compact { border-left: 1px solid var(--border); }
+.lab-now.compact .lab-dial { width: 136px; height: 136px; }
+.lab-now.compact .lab-now-info { gap: 8px; }
+.lab-now.compact .lab-now-code { font-size: 13.5px; }
+.lab-now.compact .lab-now-state { font-size: 12.5px; }
+@media (max-width: 760px) {
+  .lab-now-pair { grid-template-columns: minmax(0, 1fr); }
+  .lab-now.compact + .lab-now.compact { border-left: 0; border-top: 1px solid var(--border); }
+}
+
+/* 셋 이상 돌 때: 나머지는 칩으로, 누르면 오른쪽 자리에 보인다 */
+.lab-now-more {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 2px;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
 }
+.lab-now-more .lab-comment { margin-right: 4px; }
 
 .lab-now-tab {
   height: 24px;
@@ -5999,7 +6050,7 @@ button.grass-cell:hover {
   .lab-controls { padding-left: 8px; }
   .lab-crumbs, .lab-status-right { display: none; }
   .lab-progress .lab-code { flex-wrap: wrap; row-gap: 2px; }
-  .lab-now { grid-template-columns: 112px minmax(0, 1fr); gap: 16px; padding: 16px; }
+  .lab-now { min-height: 0; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; padding: 16px; }
   .lab-dial { width: 112px; height: 112px; }
   .lab-now-code { font-size: 13px; }
 }

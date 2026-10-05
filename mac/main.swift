@@ -19,7 +19,12 @@ let port = ProcessInfo.processInfo.environment["PORT"] ?? "4173"
 let appURL = URL(string: "http://127.0.0.1:\(port)/")!
 let background = NSColor(red: 0x19 / 255, green: 0x19 / 255, blue: 0x19 / 255, alpha: 1)
 
-final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
+// 작은 타이머 창은 다른 앱을 쓰다가 바로 누르는 창이라, 첫 클릭부터 버튼이 눌리게 한다(보통은 첫 클릭이 창 활성화에만 쓰인다).
+final class FirstClickWebView: WKWebView {
+  override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, WKScriptMessageHandler {
   var window: NSWindow!
   var webView: WKWebView!
   var server: Process?
@@ -28,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
   var restarts = 0
   var nodePath = ""
   var downloads: [ObjectIdentifier: URL] = [:]
+  var miniPanel: NSPanel?
+  var miniView: WKWebView?
   let logURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/jiwon-ilji.log")
 
   // MARK: 시작
@@ -164,6 +171,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
   func buildWindow() {
     let config = WKWebViewConfiguration()
     config.websiteDataStore = .default()
+    // 화면에서 보내는 신호(작은 타이머 창 열기, 저장했음)를 받는다.
+    config.userContentController.add(self, name: "jiwon")
     webView = WKWebView(frame: .zero, configuration: config)
     webView.navigationDelegate = self
     webView.uiDelegate = self
@@ -184,10 +193,81 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     window.titlebarAppearsTransparent = true
     window.minSize = NSSize(width: 720, height: 520)
     window.contentView = webView
+    window.delegate = self
     window.center()
     window.setFrameAutosaveName("JiwonMainWindow")
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
+  }
+
+  // MARK: 작은 타이머 창(집중 루프 → ⧉ 작은 창)
+  // 다른 앱 위에 늘 떠 있는 작은 창. 다른 데스크톱·전체화면 앱 위에도 보인다. 눌러도 지원일지가 앞으로 나오지 않는다.
+
+  func showMini() {
+    if let panel = miniPanel { panel.orderFrontRegardless(); return }
+    let config = WKWebViewConfiguration()
+    config.websiteDataStore = .default()
+    config.userContentController.add(self, name: "jiwon")
+    let size = NSRect(x: 0, y: 0, width: miniWidth, height: 76)
+    let view = FirstClickWebView(frame: size, configuration: config)
+    view.navigationDelegate = self
+    view.setValue(false, forKey: "drawsBackground")
+    let panel = NSPanel(contentRect: size, styleMask: [.titled, .closable, .utilityWindow, .hudWindow, .nonactivatingPanel], backing: .buffered, defer: false)
+    panel.title = "집중 루프"
+    panel.level = .floating
+    panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+    panel.isFloatingPanel = true
+    panel.hidesOnDeactivate = false
+    panel.becomesKeyOnlyIfNeeded = true
+    panel.isReleasedWhenClosed = false
+    panel.contentView = view
+    panel.delegate = self
+    // 처음에는 화면 오른쪽 위에, 그다음부터는 옮겨 둔 자리에 연다.
+    if !panel.setFrameUsingName("JiwonMiniTimer"), let screen = NSScreen.main?.visibleFrame {
+      panel.setFrameTopLeftPoint(NSPoint(x: screen.maxX - panel.frame.width - 24, y: screen.maxY - 24))
+    }
+    panel.setFrameAutosaveName("JiwonMiniTimer")
+    miniPanel = panel; miniView = view
+    resizeMini(panel.contentRect(forFrameRect: panel.frame).height)
+    view.load(URLRequest(url: appURL.appendingPathComponent("mini.html")))
+    panel.orderFrontRegardless()
+  }
+
+  // 타이머 수에 맞춰 높이를 바꾸고 폭은 늘 같게 둔다(위쪽 모서리는 그 자리에 둔다).
+  let miniWidth: CGFloat = 320
+  func resizeMini(_ height: CGFloat) {
+    guard let panel = miniPanel else { return }
+    let content = panel.contentRect(forFrameRect: panel.frame)
+    let target = max(40, min(height, 260))
+    guard abs(content.height - target) > 0.5 || abs(content.width - miniWidth) > 0.5 else { return }
+    let next = NSRect(x: content.minX, y: content.maxY - target, width: miniWidth, height: target)
+    panel.setFrame(panel.frameRect(forContentRect: next), display: true)
+  }
+
+  func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+    guard let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
+    let json = { (value: String) in (try? String(data: JSONEncoder().encode(value), encoding: .utf8)) ?? "\"\"" }
+    switch type {
+    case "openMini": showMini()
+    case "saved": miniView?.evaluateJavaScript("window.miniRefresh && miniRefresh()")
+    case "act":
+      guard let action = body["action"] as? String, let id = body["id"] as? String else { return }
+      webView.evaluateJavaScript("window.jiwonLab && jiwonLab.act(\(json(action)), \(json(id)))")
+    case "focusMain": NSApp.activate(ignoringOtherApps: true); window.makeKeyAndOrderFront(nil)
+    case "size": if let height = body["height"] as? Double { resizeMini(CGFloat(height)) }
+    default: break
+    }
+  }
+
+  // 본 창을 닫으면(앱 종료) 작은 창도 닫고, 작은 창을 닫으면 정리만 한다.
+  func windowWillClose(_ notification: Notification) {
+    guard let closing = notification.object as? NSWindow else { return }
+    if closing === miniPanel {
+      miniView?.configuration.userContentController.removeScriptMessageHandler(forName: "jiwon")
+      miniPanel = nil; miniView = nil
+    } else if closing === window {
+      miniPanel?.close()
+    }
   }
 
   func buildMenu() {
@@ -313,7 +393,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
   // 서버가 늦게 떴거나 잠깐 끊겼을 때는 잠시 뒤 다시 불러온다.
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     guard !quitting else { return }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { webView.load(URLRequest(url: appURL)) }
+    let url = webView === miniView ? appURL.appendingPathComponent("mini.html") : appURL
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { webView.load(URLRequest(url: url)) }
   }
 }
 

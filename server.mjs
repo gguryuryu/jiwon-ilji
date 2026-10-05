@@ -209,7 +209,7 @@ async function eventFields(event) {
 }
 
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.woff2': 'font/woff2' };
-const files = { '/': 'index.html', '/index.html': 'index.html', '/style.css': 'style.css' };
+const files = { '/': 'index.html', '/index.html': 'index.html', '/mini.html': 'mini.html', '/style.css': 'style.css' };
 // js/, fonts/ 폴더의 파일만 내준다. '..' 같은 경로로 폴더 밖을 읽지 못하게 막는다.
 const staticFolders = ['js', 'fonts'];
 function staticFile(pathname) {

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>집중 루프</title>
+  <script>
+    // 본 창과 같은 화면 밝기(어둡게·밝게·시스템 설정 따름)를 그리기 전에 적용한다.
+    (() => {
+      let mode = 'dark';
+      try { mode = localStorage.getItem('theme') || 'dark'; } catch { /* 어두운 화면 */ }
+      const light = mode === 'light' || (mode === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+      document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    })();
+  </script>
+  <style>
+    @font-face { font-family: "Pretendard Variable"; font-weight: 45 920; src: url("/fonts/PretendardVariable.woff2") format("woff2"); }
+    :root {
+      color-scheme: dark;
+      --bg: #1d1d20; --text: rgba(255, 255, 255, .93); --text-2: rgba(255, 255, 255, .62); --text-3: rgba(255, 255, 255, .42);
+      --line: rgba(255, 255, 255, .08); --button: rgba(255, 255, 255, .06); --button-hover: rgba(255, 255, 255, .12);
+      --kw: #c6a0f6; --focus: #ed8796; --rest: #8aadf4; --loop: #eed49f; --until: #7dc4e4;
+      --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    }
+    :root[data-theme="light"] {
+      color-scheme: light;
+      --bg: #fafaf9; --text: rgba(28, 28, 32, .92); --text-2: rgba(28, 28, 32, .62); --text-3: rgba(28, 28, 32, .44);
+      --line: rgba(28, 28, 32, .09); --button: rgba(28, 28, 32, .05); --button-hover: rgba(28, 28, 32, .1);
+      --kw: #8839ef; --focus: #d20f39; --rest: #1e66f5; --loop: #df8e1d; --until: #209fb5;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 "Pretendard Variable", -apple-system, sans-serif; -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none; overflow: hidden; }
+    .timer { --c: var(--focus); display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; }
+    .timer + .timer { border-top: 1px solid var(--line); }
+    .timer.rest { --c: var(--rest); } .timer.loop { --c: var(--loop); } .timer.until { --c: var(--until); }
+    .dial { display: block; width: 46px; height: 46px; overflow: visible; }
+    .dial .track { fill: none; stroke: var(--line); stroke-width: 7; }
+    .dial .wedge { fill: var(--c); fill-opacity: .22; }
+    .dial .edge { fill: none; stroke: var(--c); stroke-width: 9; stroke-linecap: round; }
+    .timer.paused .dial .wedge, .timer.paused .dial .edge { opacity: .4; }
+    .copy { min-width: 0; cursor: pointer; }
+    .row { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+    .time { font-family: var(--mono); font-size: 22px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+    .phase { color: var(--c); font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .timer.paused .phase { color: var(--text-3); }
+    .what { overflow: hidden; color: var(--text-2); font-family: var(--mono); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+    .what b { color: var(--kw); font-weight: 600; }
+    .actions { display: flex; gap: 4px; }
+    .actions button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 7px; background: var(--button); color: var(--text-2); cursor: pointer; }
+    .actions button:hover { background: var(--button-hover); color: var(--text); }
+    .actions svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+    .idle, .more { padding: 12px 14px; color: var(--text-3); font-size: 12.5px; }
+    .more { padding: 6px 14px 8px; border-top: 1px solid var(--line); font-size: 11.5px; cursor: pointer; }
+  </style>
+  <script type="module" src="/js/mini.js"></script>
+</head>
+<body>
+  <main id="timers" aria-live="off"></main>
+</body>
+</html>

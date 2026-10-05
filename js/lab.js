@@ -180,12 +180,17 @@ function blockHtml(block, startLine, today) {
 }
 
 // ---------- 지금 집중할 것: 편집기 맨 위에 타이머 하나 ----------
-// 여러 개가 돌면 작은 탭으로 고른다. 고른 게 없거나 멈췄으면 가장 먼저 시작한 것을 보여 준다.
+// 여러 개가 돌면 두 개까지 나란히 보여 준다(예: 18시까지 공부 + 그 안의 뽀모도로).
+// 먼저 시작한 것이 왼쪽, 셋 이상이면 오른쪽 자리를 아래 칩으로 바꾼다.
 let nowId = '';
-function nowBlock() {
-  const running = liveBlocks(data).filter(block => block.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
-  return running.find(block => block.id === nowId) || running[0] || null;
+const runningBlocks = () => liveBlocks(data).filter(block => block.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
+function nowBlocks() {
+  const running = runningBlocks();
+  if (running.length <= 2) return running;
+  const picked = running.find(block => block.id === nowId);
+  return picked && picked !== running[0] ? [running[0], picked] : running.slice(0, 2);
 }
+const nowBlock = () => nowBlocks()[0] || null;
 
 // 아무것도 안 돌 때도 패널은 같은 자리에 둔다(생겼다 사라지며 아래 코드가 튀지 않게): 빈 시계 + 오늘 마지막 실행
 function idleHtml() {
@@ -203,18 +208,24 @@ function idleHtml() {
 }
 
 function nowHtml() {
-  const block = nowBlock(); if (!block) return idleHtml();
-  const running = liveBlocks(data).filter(item => item.runningSince).sort((a, b) => a.runningSince.localeCompare(b.runningSince));
+  const shown = nowBlocks(); if (!shown.length) return idleHtml();
+  if (shown.length === 1) return nowPanelHtml(shown[0]);
+  // 셋 이상이면 나머지는 오른쪽 칸 안의 칩으로(줄을 따로 만들면 패널 높이가 바뀌어 아래 코드가 튄다).
+  const hidden = runningBlocks().filter(block => !shown.includes(block));
+  const more = hidden.length ? `<div class="lab-now-more"><span class="lab-comment"># 함께 도는 중</span>${hidden.map(item => `<button type="button" class="lab-now-tab" data-lab="show-now" data-id="${esc(item.id)}" title="오른쪽에 보이기"><span class="lab-kw">while</span> ${esc(item.cond || '…')}:</button>`).join('')}</div>` : '';
+  return `<div class="lab-now-pair">${nowPanelHtml(shown[0], true)}${nowPanelHtml(shown[1], true, more)}</div>`;
+}
+
+function nowPanelHtml(block, compact = false, extra = '') {
   const dial = dialState(block); const plan = parsePomodoro(block.cond);
-  const tabs = running.length > 1 ? `<div class="lab-now-tabs" role="tablist" aria-label="실행 중인 while">${running.map(item => `<button type="button" role="tab" class="lab-now-tab${item === block ? ' active' : ''}" aria-selected="${item === block}" data-lab="show-now" data-id="${esc(item.id)}"><span class="lab-kw">while</span> ${esc(item.cond || '…')}:</button>`).join('')}</div>` : '';
-  const detail = block.untilAt ? `총 ${minutesLabel(Math.round((new Date(block.untilAt) - new Date(block.runningSince)) / 60_000))} · pause해도 끝나는 시각은 그대로` : plan ? `${plan.focus}분 집중 × ${plan.rounds}${plan.rounds > 1 ? ` · 휴식 ${plan.rest}분` : ''}` : 'break할 때까지 도는 중';
-  return `<section class="lab-now ${dial.tone}${block.pausedAt ? ' paused' : ''}" data-now="${esc(block.id)}" aria-label="지금 실행 중">
+  const detail = block.untilAt ? `총 ${minutesLabel(Math.round((new Date(block.untilAt) - new Date(block.runningSince)) / 60_000))}` : plan ? `${plan.focus}분 집중 × ${plan.rounds}${plan.rounds > 1 ? ` · 휴식 ${plan.rest}분` : ''}` : 'break할 때까지 도는 중';
+  return `<section class="lab-now ${dial.tone}${block.pausedAt ? ' paused' : ''}${compact ? ' compact' : ''}" data-now="${esc(block.id)}" aria-label="실행 중: while ${esc(block.cond || '…')}">
     ${dialHtml(block)}
     <div class="lab-now-info">
-      ${tabs}
       <div class="lab-now-code"><span class="lab-kw">while</span> <span class="lab-cond${plan || block.untilAt ? ' lab-num' : ''}">${esc(block.cond || '…')}</span><span class="lab-punct">:</span> <span class="lab-now-body">${esc(bodyLabel(block))}</span></div>
       <div class="lab-now-state"><span class="lab-now-phase" data-now-phase>${dial.phaseText}</span><span class="lab-now-detail">${detail}</span></div>
       <div class="lab-now-actions"><button type="button" class="lab-run lab-pause" data-lab="${block.pausedAt ? 'resume' : 'pause'}" data-id="${esc(block.id)}">${block.pausedAt ? icon('play', 'resume') : icon('pause', 'pause')}</button><button type="button" class="lab-run lab-break" data-lab="break" data-id="${esc(block.id)}">${icon('stop', 'break')}</button><span class="lab-now-since">${hhmm(block.runningSince)}부터</span></div>
+      ${extra}
     </div>
   </section>`;
 }
@@ -275,7 +286,7 @@ export function renderLab() {
   main.className = 'database-page lab-page';
   main.innerHTML = `<header class="page-header"><h1 class="page-title">집중 루프</h1></header>
     <div class="lab-editor">
-      <div class="lab-tabbar"><span class="lab-file"><span class="lab-file-dot" aria-hidden="true"></span>lab.py</span><span class="lab-running-count">${runningCount ? `<span class="lab-running-dot" aria-hidden="true"></span>${runningCount}개 실행 중` : ''}</span></div>
+      <div class="lab-tabbar"><span class="lab-file"><span class="lab-file-dot" aria-hidden="true"></span>lab.py</span><span class="lab-running-count">${runningCount ? `<span class="lab-running-dot" aria-hidden="true"></span>${runningCount}개 실행 중` : ''}</span>${nativeBridge() ? '<button type="button" class="lab-mini-open" data-lab="open-mini" title="다른 앱 위에 늘 떠 있는 작은 타이머 창">⧉ 작은 창</button>' : ''}</div>
       <div class="lab-crumbs" data-crumbs>${crumbsHtml()}</div>
       <div data-now-slot>${nowHtml()}</div>
       <div class="lab-source">
@@ -320,11 +331,28 @@ export function renderLab() {
 
 const keepScroll = paint => { const top = window.scrollY; paint(); window.scrollTo({ top, behavior: 'instant' }); };
 
+// ---------- 맥 앱의 작은 타이머 창 ----------
+// 맥 앱(지원일지.app) 안에서만 보이는 버튼. 작은 창의 pause·break는 여기로 돌아와 본 창에서 처리한다.
+const nativeBridge = () => window.webkit?.messageHandlers?.jiwon;
+window.jiwonLab = {
+  act(action, id) {
+    const block = blockById(id); if (!block?.runningSince) return;
+    const redraw = () => { persist(); if (view === 'lab') keepScroll(renderLab); else startTicking(); };
+    if (action === 'pause' && !block.pausedAt) { pauseLoop(block); redraw(); showToast('일시정지 · 멈춘 동안은 시간이 흐르지 않아요'); }
+    if (action === 'resume' && block.pausedAt) { resumeLoop(block); redraw(); }
+    if (action === 'break') {
+      const run = breakLoop(block); redraw(); if (!run) return;
+      showToast(`루프 탈출 · ${minutesLabel(run.minutes)}${run.rounds ? ` · ${run.rounds}라운드` : ''}`, { label: '되돌리기', run: () => { block.runs = block.runs.filter(item => item !== run); block.runningSince = run.at; redraw(); } });
+    }
+  },
+};
+
 main.addEventListener('click', event => {
   if (view !== 'lab') return;
   if (!event.target.closest('.lab-link-menu, [data-lab="link"]')) closeLinkMenu();
   const button = event.target.closest('[data-lab]'); if (!button) return;
   const block = blockById(button.dataset.id); const action = button.dataset.lab;
+  if (action === 'open-mini') { nativeBridge()?.postMessage({ type: 'openMini' }); return; }
   if (action === 'add') {
     const created = newLabBlock(button.dataset.kind); data.labBlocks.push(created); persist(); keepScroll(renderLab);
     main.querySelector(`input[data-field="cond"][data-id="${CSS.escape(created.id)}"]`)?.focus();
@@ -461,8 +489,8 @@ function tick() {
     }
   }
   if (view === 'lab') {
-    const panel = main.querySelector('[data-now]'); const block = nowBlock();
-    if (panel && block && panel.dataset.now === block.id) {
+    for (const panel of main.querySelectorAll('[data-now]')) {
+      const block = running.find(item => item.id === panel.dataset.now); if (!block) continue;
       const dial = dialState(block); const paths = arcPaths(dial.minutes);
       panel.querySelector('[data-dial-wedge]').setAttribute('d', paths.wedge); panel.querySelector('[data-dial-edge]').setAttribute('d', paths.edge);
       panel.querySelector('[data-dial-time]').textContent = dial.time; panel.querySelector('[data-dial-label]').textContent = dial.label;

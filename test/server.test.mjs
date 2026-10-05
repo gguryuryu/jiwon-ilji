@@ -53,6 +53,11 @@ test('서버: 화면 파일, 저장 충돌, 경로·호스트 차단, 중복 실
     assert.equal(script.status, 200);
     assert.match(script.headers['content-type'], /javascript/);
     assert.equal((await request('/fonts/PretendardVariable.woff2')).status, 200);
+    // 맥 앱의 작은 타이머 창
+    const mini = await request('/mini.html');
+    assert.equal(mini.status, 200);
+    assert.match(mini.headers['content-type'], /html/);
+    assert.equal((await request('/js/mini.js')).status, 200);
   });
 
   await t.test('폴더 밖의 파일은 내주지 않는다', async () => {
