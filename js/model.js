@@ -133,7 +133,7 @@ export function monthLabel(month) {
 export function migrate(value) {
   if (!Array.isArray(value.goals)) value.goals = [];
   if (!Array.isArray(value.certs)) value.certs = [];
-  for (const key of ['studyRoutines', 'studyBooks', 'studyLogs', 'labBlocks']) if (!Array.isArray(value[key])) value[key] = [];
+  for (const key of ['studyRoutines', 'studyBooks', 'studyLogs', 'studyTodos', 'labBlocks']) if (!Array.isArray(value[key])) value[key] = [];
   // 잠깐 있던 공부 기록 형식(숫자 칸·전공 목차·오답·모의고사)은 루틴·교재로 바뀌어 지운다.
   for (const key of ['studyChapters', 'studyDays', 'studyMocks']) delete value[key];
   // 잠깐 있던 집중 루프 여러 줄 형식(lines)은 내용이 있는 첫 줄을 할 일 한 줄(body·link)로 되돌린다.

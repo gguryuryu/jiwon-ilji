@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { emptyData } from '../js/state.js';
 import { migrate } from '../js/model.js';
 import { mergeInto } from '../js/merge.js';
-import { addStarterPlan, bookProgress, categoryColor, certGoals, goalRoutinesOn, linkedRoutines, dayProgress, grassRange, halfYear, liveBooks, liveRoutines, newStudyBook, removeBook, removeRoutine, studyCategories, studyCategoryFor, todayRoutines, recordStudy, routineFields, routineOn, saveRoutineDefinition, shiftStudyDate, studyEntries, studyWeek, weekProgress } from '../js/study-model.js';
+import { addStarterPlan, addTodo, todosOn, bookProgress, categoryColor, certGoals, goalRoutinesOn, linkedRoutines, dayProgress, grassRange, halfYear, liveBooks, liveRoutines, newStudyBook, removeBook, removeRoutine, studyCategories, studyCategoryFor, todayRoutines, recordStudy, routineFields, routineOn, saveRoutineDefinition, shiftStudyDate, studyEntries, studyWeek, weekProgress } from '../js/study-model.js';
 
 const makeRoutine = (state, { id = 'r', startDate = '2026-10-01', ...changes } = {}) => {
   const fields = routineFields({ title: '기출 풀이', category: '전공', days: [1, 2, 3, 4, 5], amount: 20, bookId: state.studyBooks[0]?.id, ...changes }, state.studyBooks);
@@ -105,6 +105,28 @@ test('잔디 진하기는 그날 루틴을 끝낸 비율이고, 예정된 루틴
   assert.equal(dayProgress(state, '2026-10-04').level, null); // 일요일: 루틴 없음
   assert.deepEqual(weekProgress(state, '2026-10-01'), { done: 3, total: 3 }); // 아직 오지 않은 금요일은 세지 않는다
   assert.deepEqual(weekProgress(state, '2026-10-02'), { done: 3, total: 6 });
+});
+
+test('오늘만 할 일은 그날에만 보이고, 잔디와 완료 수에 루틴과 함께 센다', () => {
+  const state = emptyData();
+  makeRoutine(state, { id: 'a', category: 'NCS' });
+  assert.equal(addTodo(state, '2026-10-01', '   '), null); // 빈 칸은 넣지 않는다
+  const todo = addTodo(state, '2026-10-01', '  서류 사진 찍기 ');
+  assert.equal(todo.text, '서류 사진 찍기');
+  assert.deepEqual(todosOn(state, '2026-10-01').map(item => item.id), [todo.id]);
+  assert.deepEqual(todosOn(state, '2026-10-02'), []);
+  assert.deepEqual(dayProgress(state, '2026-10-01'), { done: 0, total: 2, level: 0 });
+  todo.done = true;
+  assert.equal(dayProgress(state, '2026-10-01').level, 2);
+  // 루틴이 없는 일요일도 할 일을 하면 잔디가 채워진다
+  addTodo(state, '2026-10-04', '모의고사 오답 정리').done = true;
+  assert.deepEqual(dayProgress(state, '2026-10-04'), { done: 1, total: 1, level: 4 });
+  assert.throws(() => addTodo(state, '2026-10-01', '가'.repeat(101)), /100자/);
+});
+
+test('예전 저장 파일에는 할 일 목록이 없어도 빈 목록으로 채운다', () => {
+  const value = emptyData(); delete value.studyTodos;
+  assert.deepEqual(migrate(value).studyTodos, []);
 });
 
 test('잔디는 반년(1~6월, 7~12월) 단위로, 첫날이 든 주부터 마지막 날이 든 주까지 보여 준다', () => {

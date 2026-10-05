@@ -156,13 +156,28 @@ export function grassRange(today, offset = 0) {
   return weeks;
 }
 
-// 그날 루틴을 얼마나 끝냈는지: 0(안 함)~4(다 함). 예정된 루틴이 없는 날은 null(쉬는 날).
+// ---------- 하루 할 일 ----------
+// 루틴과 달리 그날 하루만 하는 일. 잔디와 '완료' 수에는 루틴과 함께 센다.
+export const todosOn = (state, date) => (state.studyTodos || []).filter(todo => todo.date === date);
+
+export function addTodo(state, date, text) {
+  const value = String(text || '').trim();
+  if (!value) return null;
+  if (value.length > 100) throw new Error('할 일은 100자까지 쓸 수 있어요.');
+  const now = new Date().toISOString();
+  const todo = { id: uid(), date, text: value, done: false, createdAt: now, updatedAt: now };
+  (state.studyTodos ||= []).push(todo);
+  return todo;
+}
+
+// 그날 루틴·할 일을 얼마나 끝냈는지: 0(안 함)~4(다 함). 예정된 루틴도 할 일도 없는 날은 null(쉬는 날).
 export function dayProgress(state, date) {
-  const entries = studyEntries(state, date);
-  const done = entries.filter(entry => entry.log?.done).length;
-  if (!entries.length) return { done, total: 0, level: null };
-  const ratio = done / entries.length;
-  return { done, total: entries.length, level: !done ? 0 : ratio < 1 / 3 ? 1 : ratio < 2 / 3 ? 2 : ratio < 1 ? 3 : 4 };
+  const entries = studyEntries(state, date); const todos = todosOn(state, date);
+  const done = entries.filter(entry => entry.log?.done).length + todos.filter(todo => todo.done).length;
+  const total = entries.length + todos.length;
+  if (!total) return { done, total: 0, level: null };
+  const ratio = done / total;
+  return { done, total, level: !done ? 0 : ratio < 1 / 3 ? 1 : ratio < 2 / 3 ? 2 : ratio < 1 ? 3 : 4 };
 }
 
 // 이번 주 루틴: 아직 오지 않은 요일은 빼고 오늘까지 할 것만 센다(주 초반에도 막대가 제대로 보이게).

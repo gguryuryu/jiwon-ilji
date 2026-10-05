@@ -4,7 +4,7 @@ import { data, view } from './state.js';
 import { persist } from './store.js';
 import { flushPending, reducedMotion, showToast } from './ui.js';
 import { escapeHtml as esc, formatDateLong, icon, todayKey, uid } from './util.js';
-import { addStarterPlan, bookProgress, dayProgress, categoryColor, grassRange, halfYear, liveBooks, liveRoutines, mondayOf, newStudyBook, removeBook, removeRoutine, studyCategories, certCategory, certGoals, recordStudy, routineFields, saveRoutineDefinition, shiftStudyDate, studyDayNames, studyDays, studyEntries, studyUnits, weekProgress } from './study-model.js';
+import { addStarterPlan, addTodo, todosOn, bookProgress, dayProgress, categoryColor, grassRange, halfYear, liveBooks, liveRoutines, mondayOf, newStudyBook, removeBook, removeRoutine, studyCategories, certCategory, certGoals, recordStudy, routineFields, saveRoutineDefinition, shiftStudyDate, studyDayNames, studyDays, studyEntries, studyUnits, weekProgress } from './study-model.js';
 
 let selectedDate = todayKey();
 let lastToday = selectedDate;
@@ -15,7 +15,7 @@ const goalTitle = id => id ? (data.goals || []).find(goal => goal.id === id)?.ti
 const daysLabel = days => days.length === 7 ? '매일' : days.length === 5 && [1, 2, 3, 4, 5].every(day => days.includes(day)) ? '평일' : studyDays.filter(day => days.includes(day)).map(day => studyDayNames[day]).join('·');
 const action = (name, label, id = '', className = 'ghost-button') => `<button type="button" class="${className}" data-study-action="${name}" data-id="${esc(id)}">${label}</button>`;
 
-const dayTitle = date => { const { done, total } = dayProgress(data, date); return `${formatDateLong(date)} · ${total ? `루틴 ${done}/${total}` : '예정된 루틴 없음'}`; };
+const dayTitle = date => { const { done, total } = dayProgress(data, date); return `${formatDateLong(date)} · ${total ? `${done}/${total} 완료` : '예정된 루틴 없음'}`; };
 
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -79,16 +79,28 @@ function routineRow({ routine, definition, log }) {
   </li>`;
 }
 
+// 오늘만 할 일: 루틴 아래에 두고, 입력칸에 쓰고 Enter로 바로 넣는다. 내용은 그 자리에서 고친다.
+function todosHtml() {
+  const todos = todosOn(data, selectedDate); const future = selectedDate > todayKey(); const today = selectedDate === todayKey();
+  const rows = todos.map(todo => `<li class="study-routine-row study-todo-row${todo.done ? ' is-complete' : ''}">
+    <button type="button" class="study-check" role="checkbox" aria-checked="${todo.done}" aria-label="${esc(todo.text)} ${todo.done ? '완료 취소' : '완료'}" data-study-action="check-todo" data-id="${esc(todo.id)}" ${future ? 'disabled title="해당 날짜가 되면 기록할 수 있어요"' : ''}>${icon('check')}</button>
+    <input class="study-todo-text" value="${esc(todo.text)}" data-todo-id="${esc(todo.id)}" maxlength="100" aria-label="할 일 내용" autocomplete="off">
+    <button type="button" class="icon-button study-todo-delete" data-study-action="delete-todo" data-id="${esc(todo.id)}" aria-label="${esc(todo.text)} 삭제" title="삭제">×</button>
+  </li>`).join('');
+  return `<section class="study-category study-todos"><h3><span class="study-category-dot study-todo-dot"></span>${today ? '오늘만 할 일' : '이날만 할 일'}${todos.length ? `<span class="study-small-count">${todos.length}</span>` : ''}</h3><ul>${rows}<li class="study-todo-add">${icon('plus')}<input id="study-todo-input" maxlength="100" placeholder="${today ? '오늘만 할 일 추가' : '할 일 추가'} · Enter" aria-label="${today ? '오늘만 할 일 추가' : '이날 할 일 추가'}" autocomplete="off"></li></ul></section>`;
+}
+
 function dailyHtml() {
-  const entries = studyEntries(data, selectedDate); const done = entries.filter(entry => entry.log?.done).length;
+  const entries = studyEntries(data, selectedDate); const { done, total } = dayProgress(data, selectedDate);
   // 체크해도 줄이 움직이지 않도록 루틴을 만든 순서 그대로 둔다(누르던 자리에서 다음 줄이 올라와 잘못 누르지 않게).
   const categories = [...new Set([...studyCategories(data), ...entries.map(entry => entry.definition.category)])];
   const groups = categories.map(category => {
     const rows = entries.filter(entry => entry.definition.category === category);
     return rows.length ? `<section class="study-category"><h3><span class="study-category-dot" style="background:var(--c-${categoryColor(data, category)})"></span>${esc(category)}<span class="study-small-count">${rows.length}</span></h3><ul>${rows.map(routineRow).join('')}</ul></section>` : '';
-  }).join('') || '<p class="study-muted-row study-rest-day">이날은 예정된 루틴이 없어요.</p>';
-  return `<div class="study-section-heading"><h2>${selectedDate === todayKey() ? `오늘의 루틴 <span class="study-small-count">${formatDateLong(selectedDate)}</span>` : formatDateLong(selectedDate)}</h2><span>${entries.length ? `${done} / ${entries.length} 완료` : ''}${selectedDate === todayKey() ? '' : action('today', '오늘로', '', 'study-text-button')}</span></div>
+  }).join('') || (todosOn(data, selectedDate).length ? '' : '<p class="study-muted-row study-rest-day">이날은 예정된 루틴이 없어요.</p>');
+  return `<div class="study-section-heading"><h2>${selectedDate === todayKey() ? `오늘의 루틴 <span class="study-small-count">${formatDateLong(selectedDate)}</span>` : formatDateLong(selectedDate)}</h2><span>${total ? `${done} / ${total} 완료` : ''}${selectedDate === todayKey() ? '' : action('today', '오늘로', '', 'study-text-button')}</span></div>
     ${!liveRoutines(data).length ? `<div class="study-empty"><h3>매일 이어갈 공부를 정해 보세요</h3><p>NCS 문제 풀이, 전공 교재, 자격증 공부처럼 반복할 루틴을 추가하세요.<br>공기업 전산직 필기 계획(민경채·응용수리·전공 이론·오답 다시 풀기·토요일 모의고사)으로 시작한 뒤 고쳐 써도 돼요.</p><div class="study-empty-actions">${action('starter-plan', '전산직 필기 계획으로 시작', '', 'primary-button')}${action('new-routine', icon('plus') + '직접 추가', '', 'secondary-button')}</div></div>` : groups}
+    ${todosHtml()}
     ${selectedDate > todayKey() ? '<p class="field-help">예정된 루틴이에요. 해당 날짜가 되면 완료를 기록할 수 있어요.</p>' : ''}`;
 }
 
@@ -317,23 +329,61 @@ function checkRoutine(id) {
   }
   const date = selectedDate; const definition = entry.definition; const book = bookById(definition.bookId);
   const amount = book ? Math.min(definition.amount || 0, bookProgress(book, data.studyLogs).remaining) : 0;
-  const before = main.querySelector(`.grass-cell[data-id="${date}"]`); const beforeColor = before && getComputedStyle(before).backgroundColor;
-  recordStudy(data, definition, date, amount); persist(); keepScroll(renderStudy);
-  // 체크칸이 살짝 튀고, 위쪽 잔디의 그날 칸은 예전 색에서 새 색으로 물들며 잔잔한 테두리가 한 번 퍼진다.
-  if (!reducedMotion()) {
-    main.querySelector(`.study-check[data-id="${CSS.escape(id)}"]`)?.classList.add('just-checked');
-    const cell = main.querySelector(`.grass-cell[data-id="${date}"]`);
-    if (cell && beforeColor) {
-      const style = getComputedStyle(cell); const glow = style.getPropertyValue('--grass').trim() || style.backgroundColor;
-      const ring = style.boxShadow === 'none' ? '' : `${style.boxShadow}, `;
-      cell.animate([
-        { backgroundColor: beforeColor, boxShadow: `${ring}0 0 0 0 color-mix(in srgb, ${glow} 70%, transparent)` },
-        { backgroundColor: style.backgroundColor, boxShadow: `${ring}0 0 0 6px color-mix(in srgb, ${glow} 0%, transparent)` },
-      ], { duration: 700, easing: 'cubic-bezier(.2, .8, .2, 1)' });
-    }
-  }
+  celebrateCheck(id, date, () => recordStudy(data, definition, date, amount));
   if (book) showToast(`${book.name} ${amount}${book.unit} 기록`, { label: '분량 고치기', run: () => editAmount(id, date) });
 }
+
+// 체크 효과: 체크칸이 살짝 튀고, 위쪽 잔디의 그날 칸은 예전 색에서 새 색으로 물들며 잔잔한 테두리가 한 번 퍼진다.
+function celebrateCheck(id, date, update) {
+  const before = main.querySelector(`.grass-cell[data-id="${date}"]`); const beforeColor = before && getComputedStyle(before).backgroundColor;
+  update(); persist(); keepScroll(renderStudy);
+  if (reducedMotion()) return;
+  main.querySelector(`.study-check[data-id="${CSS.escape(id)}"]`)?.classList.add('just-checked');
+  const cell = main.querySelector(`.grass-cell[data-id="${date}"]`);
+  if (!cell || !beforeColor) return;
+  const style = getComputedStyle(cell); const glow = style.getPropertyValue('--grass').trim() || style.backgroundColor;
+  const ring = style.boxShadow === 'none' ? '' : `${style.boxShadow}, `;
+  cell.animate([
+    { backgroundColor: beforeColor, boxShadow: `${ring}0 0 0 0 color-mix(in srgb, ${glow} 70%, transparent)` },
+    { backgroundColor: style.backgroundColor, boxShadow: `${ring}0 0 0 6px color-mix(in srgb, ${glow} 0%, transparent)` },
+  ], { duration: 700, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+}
+
+// ---------- 오늘만 할 일 ----------
+const todoById = id => (data.studyTodos || []).find(todo => todo.id === id);
+
+function checkTodo(id) {
+  const todo = todoById(id); if (!todo || todo.date > todayKey()) return;
+  const finish = () => { todo.done = !todo.done; todo.updatedAt = new Date().toISOString(); };
+  if (todo.done) { finish(); persist(); keepScroll(renderStudy); return; }
+  celebrateCheck(id, todo.date, finish);
+}
+
+function deleteTodo(id) {
+  const index = (data.studyTodos || []).findIndex(todo => todo.id === id); if (index < 0) return;
+  const [removed] = data.studyTodos.splice(index, 1);
+  persist(); keepScroll(renderStudy);
+  showToast(`'${removed.text}' 할 일을 지웠어요`, { label: '되돌리기', run: () => { data.studyTodos.splice(Math.min(index, data.studyTodos.length), 0, removed); persist(); keepScroll(renderStudy); } });
+}
+
+// 한글 조합 중 Enter는 글자 확정이라 넣지 않는다. 넣은 뒤에는 입력칸에 그대로 머물러 이어서 적는다.
+main.addEventListener('keydown', event => {
+  if (view !== 'study' || event.isComposing || event.key !== 'Enter') return;
+  if (event.target.id === 'study-todo-input') {
+    event.preventDefault();
+    try { if (!addTodo(data, selectedDate, event.target.value)) return; } catch (error) { showToast(error.message); return; }
+    persist(); keepScroll(renderStudy); main.querySelector('#study-todo-input')?.focus();
+  } else if (event.target.matches('.study-todo-text')) { event.preventDefault(); event.target.blur(); }
+});
+
+// 할 일 내용을 고치면 바로 저장한다. 다 지우고 나가면 원래 내용으로 돌려 둔다(지우기는 × 버튼으로).
+main.addEventListener('change', event => {
+  if (view !== 'study' || !event.target.matches('.study-todo-text')) return;
+  const todo = todoById(event.target.dataset.todoId); if (!todo) return;
+  const value = event.target.value.trim();
+  if (!value) { event.target.value = todo.text; return; }
+  todo.text = value; todo.updatedAt = new Date().toISOString(); persist();
+});
 
 // 교재 루틴의 기록 분량 고치기: 목표와 다르게 공부한 날(덜 풀었거나 더 풀었거나)만 쓴다.
 function editAmount(id, date = selectedDate) {
@@ -358,6 +408,8 @@ main.addEventListener('click', event => {
   else if (name === 'edit-routine') openRoutineDialog(data.studyRoutines.find(routine => routine.id === id));
   else if (name === 'delete-routine') { const routine = data.studyRoutines.find(entry => entry.id === id); if (routine) deleteRoutine(routine); }
   else if (name === 'check') checkRoutine(id);
+  else if (name === 'check-todo') checkTodo(id);
+  else if (name === 'delete-todo') deleteTodo(id);
   else if (name === 'edit-amount') editAmount(id);
   else if (name === 'grass-prev' || name === 'grass-next') { grassOffset = Math.min(0, grassOffset + (name === 'grass-next' ? 1 : -1)); keepScroll(renderStudy); }
   else if (name === 'starter-plan') { addStarterPlan(data, todayKey()); persist(); renderStudy(); showToast('필기 계획을 채웠어요. 루틴·교재 탭에서 고칠 수 있어요.'); }

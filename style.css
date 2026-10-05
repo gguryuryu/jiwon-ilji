@@ -4967,6 +4967,62 @@ button.grass-cell:hover {
   overflow-wrap: anywhere;
 }
 
+/* 오늘만 할 일: 루틴 줄과 같은 모양에, 내용은 그 자리에서 고치는 입력칸 */
+.study-todo-dot { background: var(--text-3); }
+.study-todo-text {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+}
+.study-todo-text:hover { background: var(--hover); }
+.study-todo-text:focus { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent-soft); }
+.study-todo-row.is-complete .study-todo-text:not(:focus) {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: rgb(var(--fg) / .25);
+}
+.study-todo-delete {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity .12s;
+}
+.study-todo-row:hover .study-todo-delete,
+.study-todo-delete:focus-visible { opacity: 1; }
+.study-todo-delete:hover { background: var(--hover); color: var(--danger); }
+@media (hover: none) { .study-todo-delete { opacity: 1; } }
+.study-todo-add {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 4px 8px;
+  color: var(--text-3);
+}
+.study-todo-add .icon { width: 20px; height: 15px; flex: none; }
+.study-todo-add input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 6px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+}
+.study-todo-add input::placeholder { color: var(--text-3); }
+.study-todo-add input:focus { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent-soft); }
+
 .study-routine-row.is-complete .study-routine-copy > strong {
   color: var(--text-3);
   text-decoration: line-through;
