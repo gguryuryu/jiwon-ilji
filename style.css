@@ -6553,3 +6553,333 @@ button.grass-cell:hover {
     opacity: 1;
   }
 }
+
+/* ---------- 인적사항 ----------
+   이름·값 줄(기본 정보·학력·병역)은 카드 세 개, 자격증·교육은 표처럼 칸을 나란히 둔다. 칸마다 오른쪽에 복사 버튼. */
+main.profile-page {
+  max-width: 1180px;
+}
+
+.pf-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 34px;
+}
+
+.pf-card {
+  padding: 14px 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.pf-heading {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -.015em;
+}
+
+.pf-card > .pf-heading {
+  padding: 0 6px 8px;
+}
+
+.pf-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 2px;
+}
+
+.pf-label,
+.pf-cell input,
+.pf-cell textarea {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  text-overflow: ellipsis;
+  transition: background-color .12s;
+}
+
+.pf-label {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.pf-label:hover,
+.pf-cell input:hover,
+.pf-cell textarea:hover {
+  background: var(--hover);
+}
+
+.pf-label:focus,
+.pf-cell input:focus,
+.pf-cell textarea:focus {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.pf-label::placeholder,
+.pf-cell input::placeholder,
+.pf-cell textarea::placeholder {
+  color: var(--text-3);
+  opacity: .7;
+}
+
+.pf-cell {
+  position: relative;
+  min-width: 0;
+}
+
+/* 표 줄의 예시 글은 그 줄을 가리키거나 적을 때만 보인다(줄마다 같은 예시가 반복되지 않게) */
+.pf-trow:not(:hover, :focus-within) .pf-cell ::placeholder {
+  color: transparent;
+}
+
+/* 값이 있는 칸: 복사 버튼 자리만큼 글자를 덜 채운다 */
+.pf-cell input:not(:placeholder-shown),
+.pf-cell textarea:not(:placeholder-shown) {
+  padding-right: 32px;
+}
+
+.pf-cell textarea {
+  display: block;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  line-height: 20px;
+  resize: none;
+  overflow: hidden;
+}
+
+.pf-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: color .12s, background-color .12s, opacity .12s;
+}
+
+.pf-copy .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.pf-copy .icon + .icon,
+.pf-copy.copied .icon:first-child {
+  display: none;
+}
+
+.pf-copy.copied .icon + .icon {
+  display: block;
+}
+
+.pf-copy:hover {
+  background: var(--active);
+  color: var(--text);
+}
+
+.pf-copy.copied {
+  color: var(--c-green);
+}
+
+.pf-cell:has(> :placeholder-shown) .pf-copy {
+  display: none;
+}
+
+/* 표 칸은 칸에 마우스를 올렸을 때만 복사 버튼을 보인다(이름·값 줄은 늘 보인다) */
+.pf-trow .pf-copy {
+  opacity: 0;
+}
+
+.pf-trow .pf-cell:hover .pf-copy,
+.pf-trow .pf-cell:focus-within .pf-copy,
+.pf-copy.copied,
+.pf-copy:focus-visible {
+  opacity: 1;
+}
+
+.pf-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s, background-color .12s, color .12s;
+}
+
+.pf-row:hover .pf-remove,
+.pf-trow:hover .pf-remove,
+.pf-remove:focus-visible {
+  opacity: 1;
+}
+
+.pf-remove:hover {
+  background: var(--active);
+  color: var(--danger);
+}
+
+.pf-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  margin-top: 4px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pf-add .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.pf-add:hover {
+  background: var(--hover);
+  color: var(--text-2);
+}
+
+.pf-section {
+  margin-bottom: 34px;
+}
+
+.pf-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pf-note,
+.pf-full {
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-full {
+  margin: 8px 8px 0;
+}
+
+.pf-table {
+  --cols: minmax(0, 1fr);
+}
+
+.pf-certs {
+  --cols: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 1fr);
+}
+
+.pf-edu-school {
+  --cols: minmax(0, 1.3fr) minmax(0, .8fr) minmax(0, 3fr);
+}
+
+.pf-edu-job {
+  --cols: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, .7fr) minmax(0, 2.2fr);
+}
+
+.pf-thead,
+.pf-trow {
+  display: grid;
+  grid-template-columns: var(--cols) 24px;
+  align-items: start;
+  gap: 2px;
+}
+
+.pf-thead {
+  padding: 8px 0 4px;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.pf-thead span {
+  padding: 0 8px;
+}
+
+/* 아직 한 줄도 없으면 머리줄은 숨긴다 */
+.pf-thead:last-child {
+  display: none;
+}
+
+.pf-trow {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pf-trow .pf-remove {
+  margin-top: 4px;
+}
+
+@media (max-width: 760px) {
+  .pf-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 좁은 창: 표 한 줄을 '칸 이름 · 값' 세로 목록으로 */
+  .pf-thead {
+    display: none;
+  }
+
+  .pf-trow {
+    grid-template-columns: minmax(0, 1fr) 24px;
+    padding: 8px 0;
+  }
+
+  .pf-trow .pf-cell {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: start;
+    grid-column: 1;
+  }
+
+  .pf-trow .pf-cell::before {
+    content: attr(data-label);
+    padding: 7px 8px 0;
+    color: var(--text-3);
+    font-size: 12.5px;
+  }
+
+  .pf-trow .pf-remove {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}
+
+@media (hover: none) {
+  .pf-trow .pf-copy,
+  .pf-remove {
+    opacity: 1;
+  }
+}

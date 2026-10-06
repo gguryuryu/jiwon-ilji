@@ -5,6 +5,8 @@ import { renderLab, startTicking } from './lab.js';
 import { main } from './dom.js';
 import { renderExperienceDetail, renderExperiences } from './experiences.js';
 import { blankExperience } from './model.js';
+import { renderProfile } from './profile.js';
+import { tidyProfile } from './profile-model.js';
 import { peekOpen, updatePeek } from './peek.js';
 import { renderPostingDetail } from './posting-detail.js';
 import { refreshPostingTable, renderPostings } from './postings.js';
@@ -13,7 +15,7 @@ import { persist, saveCurrentEditor } from './store.js';
 import { reducedMotion } from './ui.js';
 
 // 화면 이동을 브라우저 기록에 남겨 뒤로·앞으로 가기(마우스 버튼, ⌘[ 포함)가 동작하게 한다.
-export const routeHash = (next, id) => next === 'postings' && id ? `#/peek/${id}` : ({ 'posting-detail': `#/postings/${id}`, calendar: '#/calendar', study: '#/study', lab: '#/lab', experiences: '#/experiences', 'experience-detail': `#/experiences/${id}` })[next] || '#/';
+export const routeHash = (next, id) => next === 'postings' && id ? `#/peek/${id}` : ({ 'posting-detail': `#/postings/${id}`, calendar: '#/calendar', study: '#/study', lab: '#/lab', profile: '#/profile', experiences: '#/experiences', 'experience-detail': `#/experiences/${id}` })[next] || '#/';
 
 export function routeFrom(hash) {
   const [, section = '', id = ''] = decodeURIComponent(hash || '').replace(/^#/, '').split('/');
@@ -23,6 +25,7 @@ export function routeFrom(hash) {
   if (section === 'calendar') return { view: 'calendar', id: null };
   if (section === 'study') return { view: 'study', id: null };
   if (section === 'lab') return { view: 'lab', id: null };
+  if (section === 'profile') return { view: 'profile', id: null };
   return { view: 'postings', id: null };
 }
 
@@ -32,6 +35,7 @@ export function navTo(next, id = null, { history: mode = 'push' } = {}) {
     const leaving = data.experiences.find(item => item.id === selectedId);
     if (leaving && blankExperience(leaving)) { data.experiences = data.experiences.filter(item => item !== leaving); persist(); }
   }
+  if (view === 'profile' && next !== 'profile' && tidyProfile(data)) persist();
   const hash = routeHash(next, id);
   // 지원 현황 안에서 피크만 열고 닫을 때는 목록을 그대로 두고 스크롤도 옮기지 않는다.
   const peekOnly = view === 'postings' && next === 'postings';
@@ -85,6 +89,7 @@ export function render() {
   else if (view === 'calendar') renderCalendar();
   else if (view === 'study') renderStudy();
   else if (view === 'lab') renderLab();
+  else if (view === 'profile') renderProfile();
   else if (view === 'experiences') renderExperiences();
   else if (view === 'experience-detail') renderExperienceDetail();
   // 집중 루프 탭 밖에 있어도 도는 while의 남은 시간을 창 제목에 보여 주고, 뽀모도로가 끝나면 알린다.

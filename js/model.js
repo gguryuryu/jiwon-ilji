@@ -1,4 +1,5 @@
 // 진행 상태·일정 규칙과 데이터 모양 맞추기(예전 형식 옮기기)
+import { defaultProfileFields, tidyProfile } from './profile-model.js';
 import { uid, validUrl } from './util.js';
 
 export const statusOptions = [
@@ -133,7 +134,9 @@ export function monthLabel(month) {
 export function migrate(value) {
   if (!Array.isArray(value.goals)) value.goals = [];
   if (!Array.isArray(value.certs)) value.certs = [];
-  for (const key of ['studyRoutines', 'studyBooks', 'studyLogs', 'studyTodos', 'labBlocks']) if (!Array.isArray(value[key])) value[key] = [];
+  for (const key of ['studyRoutines', 'studyBooks', 'studyLogs', 'studyTodos', 'labBlocks', 'profileEdu']) if (!Array.isArray(value[key])) value[key] = [];
+  // 인적사항은 처음 한 번 기본 항목(이름·한자 이름…)으로 채운다. 지운 항목은 다시 생기지 않는다.
+  if (!Array.isArray(value.profileFields)) value.profileFields = defaultProfileFields();
   // 잠깐 있던 공부 기록 형식(숫자 칸·전공 목차·오답·모의고사)은 루틴·교재로 바뀌어 지운다.
   for (const key of ['studyChapters', 'studyDays', 'studyMocks']) delete value[key];
   // 잠깐 있던 집중 루프 여러 줄 형식(lines)은 내용이 있는 첫 줄을 할 일 한 줄(body·link)로 되돌린다.
@@ -152,6 +155,7 @@ export function migrate(value) {
   }
   // '새 경험'만 누르고 아무것도 쓰지 않은 빈 경험은 정리한다.
   value.experiences = value.experiences.filter(item => !blankExperience(item));
+  tidyProfile(value);
   for (const item of value.postings) {
     if (!Array.isArray(item.questions)) item.questions = essayToQuestions(item.essay);
     delete item.essay;

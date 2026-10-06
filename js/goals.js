@@ -329,9 +329,10 @@ function setMonthPicker(dialog, name, value) {
 
 function certDialogHtml(cert) {
   const field = (name, label, type, placeholder) => `<label class="full">${label}<input name="${name}" type="${type}" value="${escapeHtml(cert[name] || '')}" placeholder="${placeholder}" autocomplete="off"></label>`;
+  const half = (name, label, placeholder) => `<label>${label}<input name="${name}" value="${escapeHtml(cert[name] || '')}" placeholder="${placeholder}" autocomplete="off"></label>`;
   const thisYear = new Date().getFullYear();
   return `<div class="dialog-top"><div><p class="eyebrow">자격 · 스펙</p><h2>${cert.name ? escapeHtml(cert.name) : '새 자격'}</h2></div><button type="button" class="icon-button" data-close aria-label="닫기">×</button></div>
-    <div class="form-grid">${field('name', '이름', 'text', '예: 정보처리기사, TOEIC')}${field('score', '점수 · 등급', 'text', '예: 875점, 1급, IH')}${monthPickerHtml('acquired', '취득', cert.acquired, thisYear - 20, thisYear)}${monthPickerHtml('expires', '유효기간 끝 (있으면)', cert.expires, thisYear - 5, thisYear + 10)}<label class="full">메모<input name="note" value="${escapeHtml(cert.note || '')}" placeholder="자격번호, 발급기관 등" autocomplete="off"></label></div>
+    <div class="form-grid">${field('name', '이름', 'text', '예: 정보처리기사, TOEIC')}${field('score', '점수 · 등급', 'text', '예: 875점, 1급, IH')}${monthPickerHtml('acquired', '취득', cert.acquired, thisYear - 20, thisYear)}${monthPickerHtml('expires', '유효기간 끝 (있으면)', cert.expires, thisYear - 5, thisYear + 10)}${half('number', '자격번호', '자격증에 적힌 번호')}${half('issuer', '발급 기관', '예: 한국산업인력공단')}<label class="full">메모<input name="note" value="${escapeHtml(cert.note || '')}" placeholder="비어 있음" autocomplete="off"></label></div>
     <p class="field-help cert-hint" aria-live="polite">${certHistoryHtml(cert)}</p>
     <div class="dialog-actions"><button type="button" class="ghost-button danger" data-delete>${icon('trash')}삭제</button><span class="dialog-spacer"></span><button type="button" class="primary-button" data-close>확인</button></div>`;
 }
@@ -357,6 +358,8 @@ function openCertDialog(cert) {
     }
     if (!name) return;
     cert[name] = value;
+    // 인적사항에 적어 둔 취득일과 다른 달을 고르면 그 날짜는 지운다.
+    if (name === 'acquired' && cert.acquiredDate && normalizeMonth(cert.acquiredDate) !== value) cert.acquiredDate = '';
     if (name === 'name') dialog.querySelector('h2').textContent = value || '새 자격';
     // 어학 성적은 취득 달을 넣으면 유효기간(2년)을 채운다. 직접 적은 유효기간은 건드리지 않는다.
     if (name === 'acquired' && isLanguageTest(cert.name) && cert.acquired && (!before.expires || cert.expires === before.expires)) {

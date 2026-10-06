@@ -1,6 +1,7 @@
 // 앱 데이터와 지금 보고 있는 화면. 다른 파일은 setData, setRoute로만 바꾼다.
+import { defaultProfileFields } from './profile-model.js';
 
-export const emptyData = () => ({ version: 1, postings: [], experiences: [], calendarEvents: [], goals: [], certs: [], studyRoutines: [], studyBooks: [], studyLogs: [], studyTodos: [], labBlocks: [] });
+export const emptyData = () => ({ version: 1, postings: [], experiences: [], calendarEvents: [], goals: [], certs: [], studyRoutines: [], studyBooks: [], studyLogs: [], studyTodos: [], labBlocks: [], profileFields: defaultProfileFields(), profileEdu: [] });
 
 export let data = emptyData();
 
