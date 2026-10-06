@@ -17,6 +17,12 @@ export function showEventDialog() {
   ($('#event-actions .primary-button:not(:disabled)') || $('#event-actions button, #event-actions a') || eventDialog).focus();
 }
 
+// 이 창에는 적는 칸이 없으니 바깥(어두운 곳)을 누르면 닫는다. 창 안에서 누르고 바깥에서 뗀 경우는 닫지 않는다.
+let pressedOutside = false;
+const outside = event => { const rect = eventDialog.getBoundingClientRect(); return event.target === eventDialog && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom); };
+eventDialog.addEventListener('pointerdown', event => { pressedOutside = outside(event); });
+eventDialog.addEventListener('click', event => { if (pressedOutside && outside(event)) eventDialog.close(); pressedOutside = false; });
+
 let openEventId = '';
 
 function eventButton(label, className, onClick) {
