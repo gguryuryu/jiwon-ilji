@@ -1,6 +1,6 @@
 // 진행 상태·일정 규칙과 데이터 모양 맞추기(예전 형식 옮기기)
 import { defaultProfileFields, tidyProfile } from './profile-model.js';
-import { uid, validUrl } from './util.js';
+import { todayKey, uid, validUrl } from './util.js';
 
 export const statusOptions = [
   '관심', '자소서 작성 중', '지원 완료', '서류 심사 중', '필기 전형 예정', '1차 면접 예정', '2차 면접 예정',
@@ -21,7 +21,7 @@ const statusColors = {
   '최종 결과 대기': 'pink', '서류 불합격': 'red', '필기 불합격': 'red', '1차 면접 불합격': 'red', '2차 면접 불합격': 'red', '최종 불합격': 'red', '최종 합격': 'green', '지원 포기': 'brown',
 };
 
-const statusColor = status => statusColors[status] || 'gray';
+export const statusColor = status => statusColors[status] || 'gray';
 
 export const statusTag = status => `tag tag-${statusColor(status)}`;
 
@@ -66,8 +66,8 @@ export function reviewRound(item, formatDate) {
   return round && item.nextDate && /면접/.test(item.nextLabel || '') ? `${round} · ${formatDate(item.nextDate)}` : round;
 }
 
-// 진행 상태에 맞는 탭을 먼저 연다: 면접을 앞두면 면접 준비, 결과를 기다리면 면접 후기.
-export const defaultDetailTab = item => /면접 예정$/.test(item.status || '') ? 'interview' : item.status === '최종 결과 대기' ? 'review' : 'essay';
+// 진행 상태에 맞는 탭을 먼저 연다: 결과를 기다리면 면접 후기, 그 밖에는 면접 준비(자소서는 자소서 탭에서 쓴다).
+export const defaultDetailTab = item => item.status === '최종 결과 대기' ? 'review' : 'interview';
 
 // 예전 자유 문서형 자소서(essay)를 '# 문항' 제목 기준으로 나눠 문항 목록으로 옮긴다.
 export function essayToQuestions(markdown) {
@@ -164,4 +164,19 @@ export function migrate(value) {
     for (const question of [...item.questions, ...item.interviewQuestions]) if (!Array.isArray(question.experienceIds)) question.experienceIds = [];
   }
   return value;
+}
+
+// ---------- 자소서 탭 ----------
+const byDeadline = (a, b) => (a.deadline || '9999-99-99').localeCompare(b.deadline || '9999-99-99') || a.organization.localeCompare(b.organization, 'ko');
+// 최근 마감 먼저. 마감일이 없는 공고는 맨 아래.
+const byRecentDeadline = (a, b) => Number(!a.deadline) - Number(!b.deadline) || byDeadline(b, a);
+
+// 쓸 곳(관심·자소서 작성 중, 마감 전) → 지원한 곳(최근 마감 먼저) → 마감 지난 관심
+export function essayGroups(postings, today = todayKey()) {
+  const closed = item => groupFor(item) === 'interest' && Boolean(item.deadline) && item.deadline < today;
+  return [
+    { key: 'writing', title: '쓸 곳', items: postings.filter(item => groupFor(item) === 'interest' && !closed(item)).sort(byDeadline) },
+    { key: 'applied', title: '지원한 곳', items: postings.filter(item => groupFor(item) !== 'interest').sort(byRecentDeadline) },
+    { key: 'closed', title: '마감 지남', items: postings.filter(closed).sort(byRecentDeadline) },
+  ].filter(group => group.items.length);
 }

@@ -166,7 +166,7 @@ test('후기 제목은 다음 일정이나 진행 상태로 미리 채운다', (
 test('진행 상태에 맞는 탭을 먼저 연다', () => {
   assert.equal(defaultDetailTab({ status: '1차 면접 예정' }), 'interview');
   assert.equal(defaultDetailTab({ status: '최종 결과 대기' }), 'review');
-  assert.equal(defaultDetailTab({ status: '관심' }), 'essay');
+  assert.equal(defaultDetailTab({ status: '관심' }), 'interview');
 });
 
 test('경험을 쓴 곳에 자소서 문항과 면접 질문을 모두 센다', () => {

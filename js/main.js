@@ -127,10 +127,11 @@ main.addEventListener('click', async event => {
   if (action === 'new-posting') openPostingDialog();
   if (action === 'edit-posting') openPostingDialog(data.postings.find(item => item.id === id));
   // 지원 현황에서는 오른쪽 피크로 연다. 피크가 열려 있으면 기록을 쌓지 않고 내용만 바꾼다.
-  if (action === 'open-posting' || action === 'open-essay') {
-    if (action === 'open-essay' || control.dataset.tab) setDetailTab(id, control.dataset.tab || 'essay');
+  // 자소서는 자소서 탭에서 쓴다(지원 현황의 자소서 칸, 공고 상세의 자소서 탭, 경험의 '쓴 공고'에서 모두).
+  if (action === 'open-essay' || (action === 'open-posting' && control.dataset.tab === 'essay')) { navTo('essays', id); return; }
+  if (action === 'open-posting') {
+    if (control.dataset.tab) setDetailTab(id, control.dataset.tab);
     if (view === 'postings') navTo('postings', id, { history: peekOpen() ? 'replace' : 'push' }); else navTo('posting-detail', id);
-    if (action === 'open-essay') ($('.question-answer') || $('.add-question'))?.focus({ preventScroll: view === 'postings' });
   }
   if (action === 'close-peek') closePeek();
   if (action === 'expand-peek') navTo('posting-detail', id, { history: 'replace' });

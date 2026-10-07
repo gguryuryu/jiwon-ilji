@@ -67,7 +67,6 @@ export function renderPostingDetail() {
       <section class="doc-section note-section"><div class="section-head"><h2>공고 메모</h2></div><textarea class="note-input" id="posting-note" rows="2" placeholder="자격 요건, 우대 사항, 지원 전략 등을 적어 두세요." aria-label="공고 메모">${escapeHtml(item.note || '')}</textarea></section>
       <section class="doc-section doc-tabs-section">
         <div class="view-tabs doc-tabs" role="tablist" aria-label="공고 문서">${docTabsHtml(item)}</div>
-        <div class="tab-panel" data-panel="essay" role="tabpanel"><div class="question-list" id="questions" data-list="questions"></div><button type="button" class="ghost-button add-question" data-action="add-question" data-list="questions">${icon('plus')}문항 추가</button></div>
         <div class="tab-panel" data-panel="interview" role="tabpanel"><p class="panel-hint">예상 질문과 답을 적어 두세요. 답변 옆에 말하는 데 걸리는 시간을 함께 보여 줘요.</p><div class="question-list" id="interview-questions" data-list="interviewQuestions"></div><div class="prep-foot" data-list="interviewQuestions"><button type="button" class="ghost-button add-question" data-action="add-question" data-list="interviewQuestions">${icon('plus')}질문 추가</button><div class="quick-questions" id="quick-questions"></div></div></div>
         <div class="tab-panel" data-panel="review" role="tabpanel">${reviewsHtml()}</div>
       </section>
@@ -76,7 +75,7 @@ export function renderPostingDetail() {
   const note = $('#posting-note');
   autoGrow(note);
   note.addEventListener('input', () => { item.note = note.value; item.updatedAt = new Date().toISOString(); autoGrow(note); scheduleSave(); });
-  for (const list of ['questions', 'interviewQuestions']) { renderQuestions(item, list); wireQuestions(item, list); }
+  renderQuestions(item, 'interviewQuestions'); wireQuestions(item, 'interviewQuestions');
   renderReviews(item); wireReviews(item);
   showDetailTab(container, detailTab(item));
   if (peek) container.querySelector('.peek-scroll').scrollTop = scroll;
@@ -121,22 +120,24 @@ export function wireProperties(item, container = main) {
   });
 }
 
-// 탭: 자소서 · 면접 준비 · 면접 후기. 개수를 함께 보여 준다.
+// 탭: 면접 준비 · 면접 후기. 개수를 함께 보여 준다. 자소서는 자소서 탭에서 쓰므로 그리로 가는 버튼만 둔다.
 function docTabsHtml(item) {
-  const tab = (key, label, count) => `<button type="button" role="tab" class="view-tab" data-action="detail-tab" data-tab="${key}" aria-selected="false">${label}${count ? `<span class="tab-count">${count}</span>` : ''}</button>`;
-  return tab('essay', '자소서', item.questions.length) + tab('interview', '면접 준비', item.interviewQuestions.length) + tab('review', '면접 후기', item.interviewReviews.length);
+  const count = value => value ? `<span class="tab-count">${value}</span>` : '';
+  const tab = (key, label, value) => `<button type="button" role="tab" class="view-tab" data-action="detail-tab" data-tab="${key}" aria-selected="false">${label}${count(value)}</button>`;
+  return `<button type="button" class="view-tab essay-link" data-action="open-essay" data-id="${escapeHtml(item.id)}" title="자소서 탭에서 쓰기">자소서${count(item.questions.length)}${icon('chevron-right')}</button>`
+    + tab('interview', '면접 준비', item.interviewQuestions.length) + tab('review', '면접 후기', item.interviewReviews.length);
 }
 
 export function refreshDocTabs(item) {
   const tabs = $('.doc-tabs'); if (!tabs) return;
   const current = tabs.querySelector('[aria-selected=true]')?.dataset.tab;
   tabs.innerHTML = docTabsHtml(item);
-  tabs.querySelectorAll('.view-tab').forEach(button => { const active = button.dataset.tab === current; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
+  tabs.querySelectorAll('.view-tab[role=tab]').forEach(button => { const active = button.dataset.tab === current; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
 }
 
 // 숨겨 둔 탭의 글 입력칸은 높이를 잴 수 없으므로 보일 때 다시 맞춘다.
 export function showDetailTab(container, key) {
-  container.querySelectorAll('.doc-tabs .view-tab').forEach(button => { const active = button.dataset.tab === key; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
+  container.querySelectorAll('.doc-tabs .view-tab[role=tab]').forEach(button => { const active = button.dataset.tab === key; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); });
   container.querySelectorAll('.tab-panel').forEach(panel => { panel.hidden = panel.dataset.panel !== key; });
   container.querySelectorAll(`.tab-panel[data-panel="${key}"] textarea`).forEach(autoGrow);
 }
@@ -148,7 +149,7 @@ function countHtml(question, list) {
     return `<span title="1분에 약 330자 말하는 속도 기준">말하기 <strong>${time || '—'}</strong></span><span>공백 포함 ${withSpaces.toLocaleString()}자</span>`;
   }
   const limit = Number(question.limit) || 0;
-  return `<span class="${limit && withSpaces > limit ? 'over' : ''}">공백 포함 <strong>${withSpaces.toLocaleString()}</strong>${limit ? ` / ${limit.toLocaleString()}자` : '자'}</span><span>공백 제외 ${withoutSpaces.toLocaleString()}자</span>`;
+  return `<span class="${limit && withSpaces > limit ? 'over' : ''}">공백 포함 <strong>${withSpaces.toLocaleString()}</strong>자</span><span>공백 제외 ${withoutSpaces.toLocaleString()}자</span>`;
 }
 
 function questionHtml(question, index, list) {
@@ -160,12 +161,11 @@ function questionHtml(question, index, list) {
   return `<section class="question${interview ? ' interview-question' : ''}" data-qid="${qid}">
     <div class="question-head"><span class="question-index">${interview ? 'Q' : index + 1}</span>
       <textarea class="question-title" rows="1" placeholder="${interview ? '예상 질문 (예: 우리 회사에 지원한 이유는?)' : '문항을 적어 주세요 (예: 지원 동기와 입사 후 포부)'}" aria-label="${name}">${escapeHtml(question.title)}</textarea>
-      ${interview ? '' : `<label class="question-limit">제한 <input type="number" min="0" step="50" inputmode="numeric" value="${escapeHtml(question.limit ?? '')}" placeholder="—" aria-label="${name} 글자 수 제한">자</label>`}
       <button type="button" class="icon-button question-delete" data-action="delete-question" data-qid="${qid}" aria-label="${name} 삭제">×</button></div>
     <textarea class="question-answer" rows="${interview ? 3 : 5}" placeholder="${interview ? '답변을 말하듯이 적어 보세요' : '답변을 작성하세요'}" aria-label="${name} 답변">${escapeHtml(question.answer)}</textarea>
     <div class="question-foot">
       <div class="linked-experiences">${linked.map(experience => `<span class="experience-chip"><button type="button" data-action="open-experience" data-id="${escapeHtml(experience.id)}">${escapeHtml(experience.name)}</button><button type="button" class="chip-remove" data-action="unlink-experience" data-qid="${qid}" data-id="${escapeHtml(experience.id)}" aria-label="${escapeHtml(experience.name)} 연결 해제">×</button></span>`).join('')}${available.length ? `<select class="experience-picker" data-qid="${qid}" aria-label="${name}에 경험 연결"><option value="">+ 경험 연결</option>${available.map(experience => `<option value="${escapeHtml(experience.id)}">${escapeHtml(experience.name)}</option>`).join('')}</select>` : ''}</div>
-      <div class="char-count">${countHtml(question, list)}</div>
+      <div class="question-count"><div class="char-count">${countHtml(question, list)}</div>${interview ? '' : `<label class="question-limit">제한 <input type="number" min="0" step="50" inputmode="numeric" value="${escapeHtml(question.limit ?? '')}" placeholder="—" aria-label="${name} 글자 수 제한">자</label>`}</div>
     </div>
   </section>`;
 }
@@ -186,7 +186,7 @@ export function renderQuestions(item, list = 'questions') {
   refreshDocTabs(item);
 }
 
-function wireQuestions(item, list) {
+export function wireQuestions(item, list) {
   const container = listContainer(list);
   const questionOf = element => item[list].find(question => question.id === element.closest('.question')?.dataset.qid);
   container.addEventListener('input', event => {

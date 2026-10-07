@@ -1,5 +1,6 @@
 // 주소(#/…)와 화면 이동, 뒤로 가기
 import { renderCalendar } from './calendar.js';
+import { renderEssays } from './essays.js';
 import { renderStudy } from './study.js';
 import { renderLab, startTicking } from './lab.js';
 import { main } from './dom.js';
@@ -15,7 +16,7 @@ import { persist, saveCurrentEditor } from './store.js';
 import { reducedMotion } from './ui.js';
 
 // 화면 이동을 브라우저 기록에 남겨 뒤로·앞으로 가기(마우스 버튼, ⌘[ 포함)가 동작하게 한다.
-export const routeHash = (next, id) => next === 'postings' && id ? `#/peek/${id}` : ({ 'posting-detail': `#/postings/${id}`, calendar: '#/calendar', study: '#/study', lab: '#/lab', profile: '#/profile', experiences: '#/experiences', 'experience-detail': `#/experiences/${id}` })[next] || '#/';
+export const routeHash = (next, id) => next === 'postings' && id ? `#/peek/${id}` : ({ 'posting-detail': `#/postings/${id}`, calendar: '#/calendar', study: '#/study', lab: '#/lab', profile: '#/profile', essays: id ? `#/essays/${id}` : '#/essays', experiences: '#/experiences', 'experience-detail': `#/experiences/${id}` })[next] || '#/';
 
 export function routeFrom(hash) {
   const [, section = '', id = ''] = decodeURIComponent(hash || '').replace(/^#/, '').split('/');
@@ -26,6 +27,7 @@ export function routeFrom(hash) {
   if (section === 'study') return { view: 'study', id: null };
   if (section === 'lab') return { view: 'lab', id: null };
   if (section === 'profile') return { view: 'profile', id: null };
+  if (section === 'essays') return { view: 'essays', id: id || null };
   return { view: 'postings', id: null };
 }
 
@@ -50,11 +52,13 @@ export function navTo(next, id = null, { history: mode = 'push' } = {}) {
   // 피크에서 전체 페이지로 넓힐 때는 본문이 피크 자리에서 페이지 자리로 미끄러져 온다.
   const expandFrom = next === 'posting-detail' && peekOpen() && selectedId === id ? main.querySelector('#peek .detail-body')?.getBoundingClientRect() : null;
   const changed = view !== next || selectedId !== id;
+  // 자소서 탭 안에서 기업만 바꿀 때는 화면 전체가 다시 들어오는 움직임 없이 바꾼다.
+  const withinEssays = view === 'essays' && next === 'essays';
   setRoute(next, id);
   if (peekOnly) { refreshPostingTable(); updatePeek(); return; }
   render();
   if (mode !== 'none') window.scrollTo({ top: 0, behavior: 'instant' });
-  if (!changed || reducedMotion()) return;
+  if (!changed || withinEssays || reducedMotion()) return;
   const body = expandFrom && main.querySelector('.detail-body');
   if (body) {
     const to = body.getBoundingClientRect();
@@ -90,6 +94,7 @@ export function render() {
   else if (view === 'study') renderStudy();
   else if (view === 'lab') renderLab();
   else if (view === 'profile') renderProfile();
+  else if (view === 'essays') renderEssays();
   else if (view === 'experiences') renderExperiences();
   else if (view === 'experience-detail') renderExperienceDetail();
   // 집중 루프 탭 밖에 있어도 도는 while의 남은 시간을 창 제목에 보여 주고, 뽀모도로가 끝나면 알린다.

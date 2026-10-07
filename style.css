@@ -1371,20 +1371,30 @@ select option {
   line-height: 1.5;
 }
 
+/* 글자 수 제한: 아래쪽 글자 수 옆에 둔다(문항 제목이 한 줄을 다 쓰게) */
+.question-count {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 14px;
+}
+
 .question-limit {
   display: flex;
   flex: none;
   align-items: center;
   gap: 5px;
-  margin-top: 1px;
   color: var(--text-3);
   font-size: 13px;
   white-space: nowrap;
 }
 
 .question-limit input {
-  width: 64px;
-  height: 26px;
+  width: 58px;
+  height: 24px;
+  appearance: textfield;
+  -moz-appearance: textfield;
   padding: 0 7px;
   border: 0;
   border-radius: 5px;
@@ -1393,6 +1403,12 @@ select option {
   font-size: 13px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.question-limit input::-webkit-inner-spin-button,
+.question-limit input::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 
 .question-limit input:focus {
@@ -6276,9 +6292,6 @@ button.grass-cell:hover {
   .question-head {
     flex-wrap: wrap;
   }
-  .question-limit {
-    margin-left: 32px;
-  }
   .question-delete {
     opacity: 1;
   }
@@ -6868,4 +6881,169 @@ main.profile-page {
   .pf-remove {
     opacity: 1;
   }
+}
+
+/* ---------- 자소서 ----------
+   왼쪽: 좁은 기업 목록(상태 색 점 · 기업명 · 마감, 창 높이에 맞춰 따로 스크롤), 오른쪽: 고른 기업의 자소서 */
+/* 월간 달력처럼 양옆으로 넓게 쓴다 */
+main.essays-page {
+  max-width: 1440px;
+  padding-right: 24px;
+  padding-left: 24px;
+}
+
+.essay-layout {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  align-items: start;
+  gap: 40px;
+}
+
+.essay-side {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  margin: 0 -8px;
+  padding: 0 8px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.essay-group + .essay-group {
+  margin-top: 16px;
+}
+
+.essay-group-title {
+  display: flex;
+  gap: 6px;
+  padding: 2px 8px 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.essay-group-title span {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.essay-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .12s;
+}
+
+.essay-item:hover {
+  background: var(--hover);
+}
+
+/* 고른 기업: 지원 현황에서 피크로 연 줄과 같은 파란 표시 */
+.essay-item.active {
+  background: rgba(79, 147, 236, .12);
+}
+
+.essay-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+.essay-org {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.essay-deadline {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.essay-dday.soon {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.essay-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.essay-title {
+  min-width: 0;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+}
+
+.essay-head .text-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.essay-head .text-button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.essay-doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 10px 0 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.essay-editor .add-question {
+  margin-top: 12px;
+}
+
+/* 좁은 창: 기업 목록을 위에 짧게, 자소서는 그 아래 */
+@media (max-width: 760px) {
+  .essay-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .essay-side {
+    position: static;
+    max-height: 280px;
+  }
+}
+
+/* 공고 상세의 '자소서 ›': 탭처럼 생겼지만 누르면 자소서 탭으로 간다 */
+.doc-tabs .essay-link .icon {
+  width: 13px;
+  height: 13px;
+  margin-left: 2px;
+  opacity: .6;
 }
