@@ -6034,19 +6034,6 @@ button.grass-cell:hover {
 .lab-out-time { flex: none; color: var(--text-3); font-variant-numeric: tabular-nums; }
 .lab-ok { color: var(--lab-done); }
 
-.lab-cursor {
-  align-self: center;
-  width: 8px;
-  height: 16px;
-  background: var(--text-2);
-  opacity: .6;
-  animation: lab-blink 1.1s steps(1) infinite;
-}
-
-@keyframes lab-blink {
-  50% { opacity: 0; }
-}
-
 /* 상태 막대: 실행 여부만 작은 색상 표시로 강조한다. */
 .lab-statusbar {
   display: flex;
@@ -6077,8 +6064,7 @@ button.grass-cell:hover {
 @media (prefers-reduced-motion: reduce) {
   .lab-block.running::before,
   .lab-block.fresh .lab-comment,
-  .lab-out.fresh > span:last-child,
-  .lab-cursor {
+  .lab-out.fresh > span:last-child {
     animation: none;
   }
 

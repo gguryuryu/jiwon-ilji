@@ -286,7 +286,7 @@ function outputHtml(today) {
   const lines = events.map(event => `<div class="lab-out${event.running ? ' running' : ''}${event === freshAt ? ' fresh' : ''}"><span class="lab-out-time">[${hhmm(event.at)}]</span><span>${event.html}</span></div>`).join('');
   return `<div class="lab-output" aria-label="오늘 실행 기록">
     <div class="lab-output-head"><span>OUTPUT</span><span>${today.slice(5).replace('-', '.')} · 오늘</span></div>
-    <div class="lab-output-body">${lines || '<div class="lab-out muted"><span class="lab-out-time">$</span><span>▶ run을 누르면 여기에 찍혀요</span></div>'}<div class="lab-out"><span class="lab-out-time">$</span><span class="lab-cursor" aria-hidden="true"></span></div></div>
+    <div class="lab-output-body">${lines || '<div class="lab-out muted"><span>▶ run을 누르면 여기에 찍혀요</span></div>'}</div>
   </div>`;
 }
 
