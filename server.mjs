@@ -1,6 +1,6 @@
 import http from 'node:http';
-import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
-import { dirname, join, extname, resolve, sep } from 'node:path';
+import { readFile, writeFile, rename, mkdir, rm, readdir } from 'node:fs/promises';
+import { basename, dirname, join, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lookup } from 'node:dns/promises';
 import { execFile } from 'node:child_process';
@@ -220,6 +220,63 @@ function staticFile(pathname) {
   return filename.startsWith(join(root, folder) + sep) ? filename : null;
 }
 
+// ---------- 기업별 자료 파일(공고문 등) ----------
+// 기록 파일 옆 files/<id>/<원래 이름> 에 둔다. 기록(job-search.json)에는 이름·크기만 적고, 파일은 이 컴퓨터에만 있다.
+const filesDir = join(dirname(dataPath), 'files');
+const fileLimit = 50 * 1024 * 1024;
+const fileIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// 파일을 바꾸는 요청은 앱 화면만 보낼 수 있다(전용 헤더 + 다른 사이트에서 온 요청 거절).
+const fromApp = request => request.headers['x-jiwon-ilji'] === '1' && (!request.headers.origin || request.headers.origin === `http://${request.headers.host}`);
+
+// 폴더 경로나 윈도우에서 못 쓰는 글자를 빼고, 너무 길면 확장자는 남기고 줄인다.
+function safeFileName(raw) {
+  const name = basename(String(raw || '').replace(/\\/g, '/')).replace(/[\u0000-\u001f<>:"/\\|?*]/g, '').replace(/^[.\s]+|[.\s]+$/g, '');
+  if (!name) return '파일';
+  const ext = extname(name).slice(0, 12);
+  return name.length > 120 ? name.slice(0, 120 - ext.length) + ext : name;
+}
+
+async function saveUpload(request, rawName) {
+  const name = safeFileName(rawName);
+  const chunks = []; let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > fileLimit) throw Object.assign(new Error('50MB보다 큰 파일은 올릴 수 없어요.'), { status: 413 });
+    chunks.push(chunk);
+  }
+  const id = randomUUID();
+  await mkdir(join(filesDir, id), { recursive: true });
+  await writeFile(join(filesDir, id, name), Buffer.concat(chunks));
+  return { id, name, size };
+}
+
+async function storedFile(id) {
+  if (!fileIdPattern.test(id)) return null;
+  const [name] = await readdir(join(filesDir, id)).catch(() => []);
+  return name ? join(filesDir, id, name) : null;
+}
+
+// 컴퓨터에 깔린 기본 프로그램(미리보기·한글·워드 등)으로 연다.
+function openWithDefaultApp(path) {
+  const [command, args] = process.platform === 'win32' ? ['explorer', [path]] : process.platform === 'darwin' ? ['open', [path]] : ['xdg-open', [path]];
+  execFile(command, args, () => {});
+}
+
+async function handleFiles(request, response, url) {
+  if (!fromApp(request)) return sendJson(response, 403, { error: '허용되지 않은 요청입니다.' });
+  const [, , , id = '', action = ''] = url.pathname.split('/');
+  if (!id && request.method === 'POST') {
+    try { return sendJson(response, 200, await saveUpload(request, url.searchParams.get('name'))); }
+    catch (error) { return sendJson(response, error.status || 500, { error: error.message }); }
+  }
+  const path = await storedFile(id);
+  if (!path) return sendJson(response, 404, { error: '파일을 찾을 수 없어요.' });
+  if (action === 'open' && request.method === 'POST') { openWithDefaultApp(path); return sendJson(response, 200, { ok: true }); }
+  if (!action && request.method === 'DELETE') { await rm(join(filesDir, id), { recursive: true, force: true }); return sendJson(response, 200, { ok: true }); }
+  return sendJson(response, 404, { error: '찾을 수 없습니다.' });
+}
+
 // ---------- 앱 창을 닫으면 꺼지기(--exit-when-closed, 윈도우 바로가기에서 사용) ----------
 // 열려 있는 화면은 30초마다 신호(ping)를 보내고, 닫힐 때 작별 신호(bye)를 보낸다.
 // 열린 화면이 하나도 없으면 저장을 마친 뒤 서버를 끈다. 닫힐 때 신호를 놓쳐도 idleMs 뒤에는 꺼진다.
@@ -274,6 +331,7 @@ const server = http.createServer(async (request, response) => {
       catch (error) { return sendJson(response, error.status || 500, { error: error.status ? error.message : '업데이트하지 못했어요. 잠시 후 다시 눌러 주세요.' }); }
       finally { updateTask = null; }
     }
+    if (url.pathname === '/api/files' || url.pathname.startsWith('/api/files/')) return handleFiles(request, response, url);
     if (url.pathname === '/api/data' && request.method === 'GET') return sendJson(response, 200, await loadData());
     if (url.pathname === '/api/ping' && request.method === 'POST') return presence(request, response, 'ping');
     if (url.pathname === '/api/bye' && request.method === 'POST') return presence(request, response, 'bye');

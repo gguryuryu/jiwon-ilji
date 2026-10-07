@@ -1,6 +1,7 @@
 // 자소서: 왼쪽에 지원 현황의 기업 목록(상태 색·기업명·마감), 오른쪽에 고른 기업의 자소서.
 // 자소서는 여기서만 쓴다. 지원 현황의 자소서 칸·공고 상세의 '자소서 ›'를 누르면 이 탭의 그 기업으로 온다.
 import { main } from './dom.js';
+import { filesHtml } from './files.js';
 import { essayGroups, statusColor, statusTag } from './model.js';
 import { renderQuestions, wireQuestions } from './posting-detail.js';
 import { navTo, routeHash } from './router.js';
@@ -46,6 +47,7 @@ function editorHtml(item) {
       <button type="button" class="text-button" data-action="open-posting" data-id="${esc(item.id)}">${icon('open')}공고 보기</button>
     </div>
     <div class="essay-doc-meta">${[item.role, deadline].filter(Boolean).map(text => `<span>${esc(text)}</span>`).join('')}<span class="${statusTag(item.status)}">${esc(item.status)}</span></div>
+    <div class="essay-files" id="essay-files">${filesHtml(item)}</div>
     <div class="question-list" id="questions" data-list="questions"></div>
     <button type="button" class="ghost-button add-question" data-action="add-question" data-list="questions">${icon('plus')}문항 추가</button>`;
 }

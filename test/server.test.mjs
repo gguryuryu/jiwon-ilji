@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,7 @@ function request(path, { method = 'GET', body = null, host = `127.0.0.1:${port}`
       response.on('end', () => resolve({ status: response.statusCode, headers: response.headers, text: Buffer.concat(chunks).toString('utf8') }));
     });
     req.on('error', reject);
-    if (body) req.write(JSON.stringify(body));
+    if (body) req.write(Buffer.isBuffer(body) ? body : JSON.stringify(body));
     req.end();
   });
 }
@@ -85,6 +85,24 @@ test('서버: 화면 파일, 저장 충돌, 경로·호스트 차단, 중복 실
     const stale = await request('/api/data', { method: 'PUT', body: { ...empty, revision: 0 } });
     assert.equal(stale.status, 409);
     assert.equal(JSON.parse(stale.text).data.postings[0].organization, 'A');
+  });
+
+  await t.test('자료 파일: 앱 요청만 올리고 지우며, 이름은 안전하게 바꿔 기록 폴더 files/ 에 둔다', async () => {
+    const app = { 'x-jiwon-ilji': '1', 'content-type': 'application/octet-stream' };
+    const body = Buffer.from('%PDF-1.4 공고문');
+    assert.equal((await request('/api/files?name=a.pdf', { method: 'POST', body })).status, 403);
+    assert.equal((await request('/api/files?name=a.pdf', { method: 'POST', body, headers: { ...app, origin: 'https://evil.example' } })).status, 403);
+    const uploaded = await request(`/api/files?name=${encodeURIComponent('../../2026 공고문:최종.pdf')}`, { method: 'POST', body, headers: app });
+    assert.equal(uploaded.status, 200);
+    const file = JSON.parse(uploaded.text);
+    assert.equal(file.name, '2026 공고문최종.pdf');
+    assert.equal(file.size, body.length);
+    assert.deepEqual(await readdir(join(dataDir, 'files', file.id)), ['2026 공고문최종.pdf']);
+    assert.equal(await readFile(join(dataDir, 'files', file.id, file.name), 'utf8'), body.toString('utf8'));
+    for (const id of ['..', '..%2F..%2Fjob-search.json', 'not-a-uuid']) assert.equal((await request(`/api/files/${id}/open`, { method: 'POST', headers: app })).status, 404, id);
+    assert.equal((await request(`/api/files/${file.id}`, { method: 'DELETE' })).status, 403);
+    assert.equal((await request(`/api/files/${file.id}`, { method: 'DELETE', headers: app })).status, 200);
+    assert.deepEqual(await readdir(join(dataDir, 'files')), []);
   });
 
   await t.test('이미 켜져 있으면 두 번째 실행은 안내만 하고 정상 종료한다', async () => {

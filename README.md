@@ -171,6 +171,7 @@
 
 - 왼쪽 목록은 **쓸 곳**(관심·자소서 작성 중, 마감 가까운 순) · **지원한 곳**(최근 마감 먼저) · **마감 지남**으로 나뉘고, 기업명과 마감(D-day)이 보입니다. 앞의 점 색이 진행 상태입니다(마우스를 올리면 이름).
 - 기업을 누르면 오른쪽에서 그 기업의 자소서를 씁니다. 문항마다 글자 수(공백 포함·제외)와 제한을 보고, 경험 정리의 경험을 연결할 수 있습니다. **공고 보기**로 공고 상세로 갑니다.
+- **자료**: 기업마다 공고문·직무기술서 같은 파일을 올려 둡니다. **올리기**를 누르거나 파일을 오른쪽에 끌어다 놓으면 되고, 파일을 누르면 컴퓨터의 기본 프로그램(미리보기·한글 등)으로 열립니다. 파일은 `data/files` 폴더에만 저장되고 백업 파일(.json)에는 들어가지 않습니다.
 - 다른 탭에 다녀와도 보던 기업으로 돌아옵니다.
 
 ### 경험 정리
@@ -267,7 +268,7 @@ js/goals.js         지원 현황 위의 목표 · 해 온 것 보드, 목표 �
 js/postings.js      지원 현황(표·보드·단계 요약), posting-detail.js 상세, interview.js 면접 후기, peek.js 사이드 피크, date-field.js 날짜 칸
 js/lab.js           집중 루프(while·if 블록), 계산은 lab-model.js
 js/study.js         공부 기록(잔디·루틴·교재 진도), 계산은 study-model.js
-js/essays.js        자소서 탭(왼쪽 기업 목록 + 오른쪽 작성. 문항 편집은 posting-detail.js와 같이 씀)
+js/essays.js        자소서 탭(왼쪽 기업 목록 + 오른쪽 작성. 문항 편집은 posting-detail.js와 같이 씀), files.js 기업별 자료 파일
 js/profile.js       인적사항, 계산은 profile-model.js
 js/experiences.js   경험 정리, calendar.js·ics.js·event-dialog.js 달력, posting-dialog.js 새 공고 창
 js/util.js, model.js, ui.js, dom.js   공통 도구, 상태 규칙, 알림·움직임, 자주 쓰는 화면 요소

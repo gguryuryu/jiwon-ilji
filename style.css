@@ -7023,6 +7023,119 @@ main.essays-page {
   font-size: 14px;
 }
 
+/* 자료 파일: 기업 정보 아래 한 줄. 누르면 기본 프로그램으로 열고, 오른쪽에 끌어다 놓아도 올라간다 */
+.essay-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 20px;
+}
+
+.essay-files-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 4px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.essay-files .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.essay-file {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  transition: border-color .12s, background-color .12s;
+}
+
+.essay-file:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.essay-file-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.essay-file-open .icon {
+  flex: none;
+  color: var(--text-3);
+}
+
+.essay-file-name {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.essay-file-size {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.essay-file.busy {
+  opacity: .6;
+}
+
+.essay-file.busy .essay-file-open {
+  padding-right: 9px;
+  cursor: default;
+}
+
+.essay-file-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.essay-file-add:hover {
+  border-color: var(--text-3);
+  color: var(--text-2);
+}
+
+/* 파일을 끌고 오면 놓을 자리를 보여 준다 */
+.essay-editor {
+  border-radius: 12px;
+  transition: box-shadow .12s, background-color .12s;
+}
+
+.essay-editor.file-over {
+  background: rgba(79, 147, 236, .05);
+  box-shadow: 0 0 0 2px rgba(79, 147, 236, .55), 0 0 0 10px rgba(79, 147, 236, .05);
+}
+
 .essay-editor .add-question {
   margin-top: 12px;
 }
