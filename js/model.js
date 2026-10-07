@@ -83,7 +83,8 @@ export function essayToQuestions(markdown) {
   return sections.map(section => newQuestion(section.title, section.lines.join('\n').replace(/\n{2,}/g, '\n').trim()));
 }
 
-export const blankExperience = item => !item.name?.trim() && !item.type && !item.period && !item.role && !item.keywords?.length && !item.description && !item.result && !item.detail?.trim();
+// 빈 경험: 주제 키워드(빈 주제를 눌러 시작하면 붙는다) 말고는 아무것도 적지 않았다.
+export const blankExperience = item => !item.name?.trim() && !item.type && !item.period && !item.role && !(item.keywords || []).some(keyword => !experienceTopics.includes(keyword)) && !item.description && !item.result && !item.detail?.trim();
 
 // ---------- 홈: 목표·자격 ----------
 // 목표 상태: todo(남은 목표) → doing(진행 중) → done(해 온 것). kind가 cert이면 완료할 때 자격 목록에 들어간다.
@@ -180,3 +181,15 @@ export function essayGroups(postings, today = todayKey()) {
     { key: 'closed', title: '마감 지남', items: postings.filter(closed).sort(byRecentDeadline) },
   ].filter(group => group.items.length);
 }
+
+// ---------- 경험 정리: 자소서에 자주 나오는 주제 ----------
+// 키워드로 붙이면 주제마다 경험이 몇 개인지 보여 주고, 빈 주제를 눈에 띄게 한다.
+export const experienceTopics = ['협업', '갈등 해결', '문제 해결', '실패·극복', '직무 역량', '고객 응대', '리더십', '성실·책임감'];
+
+export const topicCounts = experiences => experienceTopics.map(topic => ({ topic, count: experiences.filter(item => (item.keywords || []).includes(topic)).length }));
+
+// 경험 상세(마크다운)를 자소서 답변에 넣을 글로: 제목 줄(상황·행동 등)과 굵게 표시는 빼고 문단·목록만 둔다.
+export const experiencePlainText = item => {
+  const detail = String(item.detail || '').split('\n').filter(line => !/^#{1,2} /.test(line)).map(line => line.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return detail || [item.description, item.result].filter(Boolean).join('\n');
+};

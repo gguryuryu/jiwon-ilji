@@ -3,7 +3,7 @@ import { allEvents, calendarState, eventClass, eventKindLabel, eventShort, openC
 import { closeDatePopovers, dateActions, dateTarget, handleDateAction, miniCalendarHtml } from './date-field.js';
 import { $, eventDialog, main } from './dom.js';
 import { openEvent, showEventDialog } from './event-dialog.js';
-import { keywordEditorHtml, toggleExperienceKeyword } from './experiences.js';
+import { insertStar, keywordEditorHtml, toggleExperienceKeyword } from './experiences.js';
 import { groupFor, migrate, newQuestion, shownTime } from './model.js';
 import { handleInterviewAction, setDetailTab } from './interview.js';
 import { closePeek, peekEdited, peekOpen } from './peek.js';
@@ -204,9 +204,17 @@ main.addEventListener('click', async event => {
   }
   if (action === 'new-experience') {
     const now = new Date().toISOString();
-    const item = { id: uid(), name: '', type: '', period: '', role: '', keywords: [], description: '', result: '', detail: '', createdAt: now, updatedAt: now };
+    // 경험 정리의 빈 주제를 누르면 그 주제를 키워드로 붙여 시작한다.
+    const item = { id: uid(), name: '', type: '', period: '', role: '', keywords: control.dataset.keyword ? [control.dataset.keyword] : [], description: '', result: '', detail: '', createdAt: now, updatedAt: now };
     data.experiences.push(item); persist(); navTo('experience-detail', item.id); $('.title-input')?.focus();
   }
+  if (action === 'add-keyword') {
+    const item = data.experiences.find(experience => experience.id === selectedId); if (!item) return;
+    item.keywords = [...new Set([...(item.keywords || []), control.dataset.keyword])];
+    item.updatedAt = new Date().toISOString(); persist();
+    $('#keyword-editor').innerHTML = keywordEditorHtml(item);
+  }
+  if (action === 'insert-star') insertStar();
   if (action === 'remove-keyword') {
     const item = data.experiences.find(experience => experience.id === selectedId); if (!item) return;
     item.keywords = item.keywords.filter(keyword => keyword !== control.dataset.keyword);

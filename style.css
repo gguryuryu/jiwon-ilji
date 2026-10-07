@@ -7160,3 +7160,161 @@ main.essays-page {
   margin-left: 2px;
   opacity: .6;
 }
+
+/* ---------- 경험 정리: 자주 묻는 주제 · 키워드 제안 · STAR 틀 ---------- */
+/* 아직 경험이 없는 주제는 점선으로 비워 두고, 누르면 그 주제의 경험을 바로 적는다 */
+.topic-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 7px 0 5px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.topic-empty .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.topic-empty:hover {
+  border-color: var(--text-3);
+  color: var(--text-2);
+}
+
+.topic-strip + .keyword-filter {
+  padding-top: 0;
+}
+
+.topic-strip:has(+ .keyword-filter:not(:empty)) {
+  border-bottom: 0;
+}
+
+/* 경험 상세의 키워드 칸: 아직 붙이지 않은 주제를 아래 줄에 제안한다 */
+.keyword-suggest {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-top: 2px;
+}
+
+.keyword-suggest .topic-empty {
+  height: 20px;
+  font-size: 12px;
+  opacity: .8;
+}
+
+.editor-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.star-button {
+  font-size: 12.5px;
+}
+
+/* ---------- 자소서 탭: 문항에 연결한 경험을 그 자리에서 펼쳐 보기 ---------- */
+.experience-chip.open {
+  background: var(--tag-blue);
+}
+
+.exp-peek {
+  margin-top: 10px;
+  padding: 12px 14px 4px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 14px;
+  animation: exp-peek-in .18s var(--ease-out);
+}
+
+@keyframes exp-peek-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+.exp-peek-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-bottom: 8px;
+}
+
+.exp-peek-head > span:not(.exp-peek-actions) {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.exp-peek-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.exp-peek-actions .text-button {
+  font-size: 13px;
+}
+
+.exp-peek-actions .icon-button {
+  width: 24px;
+  height: 24px;
+  color: var(--text-3);
+  font-size: 16px;
+}
+
+.exp-peek-desc,
+.exp-peek-result,
+.exp-peek-empty {
+  margin: 0 0 8px;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+.exp-peek-result b {
+  margin-right: 8px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.exp-peek-empty {
+  color: var(--text-3);
+}
+
+.exp-peek-body {
+  color: var(--text);
+  line-height: 1.75;
+}
+
+.exp-peek-body p,
+.exp-peek-body ul {
+  margin: 0 0 8px;
+}
+
+.exp-peek-body ul {
+  padding-left: 20px;
+}
+
+.exp-peek-body h2,
+.exp-peek-body h3 {
+  margin: 10px 0 2px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exp-peek {
+    animation: none;
+  }
+}

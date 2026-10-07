@@ -2,7 +2,8 @@
 // 자소서는 여기서만 쓴다. 지원 현황의 자소서 칸·공고 상세의 '자소서 ›'를 누르면 이 탭의 그 기업으로 온다.
 import { main } from './dom.js';
 import { filesHtml } from './files.js';
-import { essayGroups, statusColor, statusTag } from './model.js';
+import { essayGroups, experiencePlainText, statusColor, statusTag } from './model.js';
+import { markdownToHtml } from './experiences.js';
 import { renderQuestions, wireQuestions } from './posting-detail.js';
 import { navTo, routeHash } from './router.js';
 import { data, selectedId, setRoute, view } from './state.js';
@@ -86,4 +87,54 @@ main.addEventListener('click', event => {
   if (view !== 'essays') return;
   const row = event.target.closest('.essay-item');
   if (row && row.dataset.id !== selectedId) navTo('essays', row.dataset.id, { history: 'replace' });
+});
+
+// ---------- 문항에 연결한 경험을 옆에서 보기 ----------
+// 자소서를 쓰다가 경험 칩을 누르면 경험 정리로 넘어가지 않고, 그 문항 아래에 내용을 펼친다. 답변에 바로 넣을 수도 있다.
+function experiencePeekHtml(experience) {
+  const id = esc(experience.id);
+  const meta = [experience.type, experience.period, experience.role].filter(Boolean).map(esc).join(' · ');
+  const detail = experience.detail?.trim();
+  const empty = !detail && !experience.description && !experience.result;
+  return `<div class="exp-peek" data-exp="${id}">
+    <div class="exp-peek-head"><strong>${esc(experience.name || '제목 없음')}</strong>${meta ? `<span>${meta}</span>` : ''}
+      <span class="exp-peek-actions"><button type="button" class="text-button" data-exp-insert="${id}"${experiencePlainText(experience) ? '' : ' disabled'} title="답변의 커서 자리에 경험 내용을 넣어요">답변에 넣기</button><button type="button" class="text-button" data-exp-open="${id}">경험 정리에서 열기</button><button type="button" class="icon-button" data-exp-close aria-label="닫기">×</button></span></div>
+    ${experience.description ? `<p class="exp-peek-desc">${esc(experience.description)}</p>` : ''}
+    ${experience.result ? `<p class="exp-peek-result"><b>핵심 결과</b>${esc(experience.result)}</p>` : ''}
+    ${detail ? `<div class="exp-peek-body">${markdownToHtml(detail)}</div>` : ''}
+    ${empty ? '<p class="exp-peek-empty">아직 적은 내용이 없어요. 경험 정리에서 이어서 적어 보세요.</p>' : ''}
+  </div>`;
+}
+
+// 답변 칸의 마지막 커서 자리에 넣는다. 편집 기록에 남겨 ⌘Z로 되돌릴 수 있게 한다.
+function insertIntoAnswer(answer, text) {
+  const start = answer.selectionStart ?? answer.value.length; const end = answer.selectionEnd ?? start;
+  const before = answer.value.slice(0, start);
+  const piece = (before && !before.endsWith('\n') ? '\n' : '') + text;
+  answer.focus(); answer.setSelectionRange(start, end);
+  if (!document.execCommand('insertText', false, piece)) { answer.setRangeText(piece, start, end, 'end'); answer.dispatchEvent(new Event('input', { bubbles: true })); }
+}
+
+main.addEventListener('click', event => {
+  if (view !== 'essays') return;
+  const question = event.target.closest('.question'); if (!question) return;
+  const chip = event.target.closest('.experience-chip [data-action="open-experience"]');
+  if (chip) {
+    // 경험 정리로 넘어가는 기본 동작(main.js) 대신 여기서 펼친다.
+    event.stopImmediatePropagation();
+    const experience = data.experiences.find(entry => entry.id === chip.dataset.id); if (!experience) return;
+    const open = question.querySelector(`.exp-peek[data-exp="${CSS.escape(experience.id)}"]`);
+    question.querySelector('.exp-peek')?.remove();
+    question.querySelectorAll('.experience-chip.open').forEach(element => element.classList.remove('open'));
+    if (!open) { question.insertAdjacentHTML('beforeend', experiencePeekHtml(experience)); chip.closest('.experience-chip').classList.add('open'); }
+    return;
+  }
+  const close = () => { question.querySelector('.exp-peek')?.remove(); question.querySelectorAll('.experience-chip.open').forEach(element => element.classList.remove('open')); };
+  if (event.target.closest('[data-exp-close]')) { close(); return; }
+  const openButton = event.target.closest('[data-exp-open]'); if (openButton) { navTo('experience-detail', openButton.dataset.expOpen); return; }
+  const insert = event.target.closest('[data-exp-insert]');
+  if (insert) {
+    const experience = data.experiences.find(entry => entry.id === insert.dataset.expInsert);
+    if (experience) insertIntoAnswer(question.querySelector('.question-answer'), experiencePlainText(experience));
+  }
 });

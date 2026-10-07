@@ -13,3 +13,14 @@ test('자소서 탭: 쓸 곳은 마감 가까운 순, 지원한 곳은 최근 �
   assert.deepEqual(groups.map(group => [group.key, group.items.map(item => item.organization).join('')]), [['writing', '나가다'], ['applied', '마라사'], ['closed', '바']]);
   assert.deepEqual(essayGroups([posting('가', '관심', '')], '2026-10-07').map(group => group.key), ['writing']);
 });
+
+test('경험 정리: 주제별 경험 수, 주제 키워드만 있는 경험은 빈 경험, 답변에 넣을 글', async () => {
+  const { topicCounts, blankExperience, experiencePlainText } = await import('../js/model.js');
+  const experiences = [{ keywords: ['협업', '갈등 해결'] }, { keywords: ['협업', '데이터'] }];
+  assert.deepEqual(topicCounts(experiences).slice(0, 3), [{ topic: '협업', count: 2 }, { topic: '갈등 해결', count: 1 }, { topic: '문제 해결', count: 0 }]);
+  assert.equal(blankExperience({ name: '', keywords: ['리더십'] }), true);
+  assert.equal(blankExperience({ name: '', keywords: ['데이터'] }), false);
+  const detail = '## 상황\n\n동아리에서 **역할**이 겹쳤다.\n\n## 과제\n\n## 행동\n\n- 표로 정리\n- 점검 회의';
+  assert.equal(experiencePlainText({ detail }), '동아리에서 역할이 겹쳤다.\n\n- 표로 정리\n- 점검 회의');
+  assert.equal(experiencePlainText({ detail: '## 상황', description: '요약', result: '배포' }), '요약\n배포');
+});

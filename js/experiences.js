@@ -4,6 +4,7 @@ import { topbar, wireProperties } from './posting-detail.js';
 import { navTo } from './router.js';
 import { data, experienceUses, selectedId, view } from './state.js';
 import { persist, saveCurrentEditor, scheduleSave } from './store.js';
+import { experienceTopics, topicCounts } from './model.js';
 import { escapeHtml, icon, propRow, th } from './util.js';
 
 let experienceSearch = '';
@@ -34,14 +35,22 @@ function experienceResults() {
 
 function keywordFilterHtml() {
   const counts = new Map();
-  for (const item of data.experiences) for (const keyword of item.keywords || []) counts.set(keyword, (counts.get(keyword) || 0) + 1);
+  for (const item of data.experiences) for (const keyword of item.keywords || []) if (!experienceTopics.includes(keyword)) counts.set(keyword, (counts.get(keyword) || 0) + 1);
   const keywords = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
-  return keywords.length ? `<span class="filter-label">키워드</span>${keywords.map(([keyword, count]) => `<button type="button" class="keyword keyword-button${keyword === experienceKeyword ? ' selected' : ''}" data-action="filter-keyword" data-keyword="${escapeHtml(keyword)}" aria-pressed="${keyword === experienceKeyword}">${escapeHtml(keyword)} <span class="keyword-count">${count}</span></button>`).join('')}` : '';
+  return keywords.length ? `<span class="filter-label">다른 키워드</span>${keywords.map(([keyword, count]) => `<button type="button" class="keyword keyword-button${keyword === experienceKeyword ? ' selected' : ''}" data-action="filter-keyword" data-keyword="${escapeHtml(keyword)}" aria-pressed="${keyword === experienceKeyword}">${escapeHtml(keyword)} <span class="keyword-count">${count}</span></button>`).join('')}` : '';
+}
+
+// 자주 묻는 주제: 경험이 있으면 눌러서 걸러 보고, 아직 없으면 눌러서 그 주제의 경험을 바로 적는다.
+function topicStripHtml() {
+  return `<span class="filter-label">자주 묻는 주제</span>${topicCounts(data.experiences).map(({ topic, count }) => count
+    ? `<button type="button" class="keyword keyword-button topic-chip${topic === experienceKeyword ? ' selected' : ''}" data-action="filter-keyword" data-keyword="${escapeHtml(topic)}" aria-pressed="${topic === experienceKeyword}">${escapeHtml(topic)} <span class="keyword-count">${count}</span></button>`
+    : `<button type="button" class="topic-chip topic-empty" data-action="new-experience" data-keyword="${escapeHtml(topic)}" title="‘${escapeHtml(topic)}’ 경험 적기">${icon('plus')}${escapeHtml(topic)}</button>`).join('')}`;
 }
 
 function refreshExperienceTable() {
   if (view !== 'experiences' || !$('#experience-results')) return;
   $('#experience-results').innerHTML = experienceResults();
+  $('#topic-strip').innerHTML = topicStripHtml();
   $('#keyword-filter').innerHTML = keywordFilterHtml();
   $('#experience-count').textContent = experienceCountText();
 }
@@ -55,13 +64,16 @@ export function renderExperiences() {
   main.className = 'database-page';
   main.innerHTML = `<header class="page-header"><h1 class="page-title">경험 정리</h1><p class="page-description">자소서에 쓸 경험을 키워드와 역할로 정리합니다.</p></header>
     <div class="view-bar"><div class="view-tabs"><span class="view-tab active">${icon('table')}전체 경험<span class="view-count" id="experience-count">${experienceCountText()}</span></span></div>${data.experiences.length ? `<div class="view-actions"><label class="search-box">${icon('search')}<input id="experience-search" type="search" value="${escapeHtml(experienceSearch)}" placeholder="검색" aria-label="경험 검색 (단축키 /)"><kbd>/</kbd></label><button type="button" class="primary-button" data-action="new-experience">${icon('plus')}새 경험</button></div>` : ''}</div>
+    <div class="keyword-filter topic-strip" id="topic-strip">${topicStripHtml()}</div>
     <div class="keyword-filter" id="keyword-filter">${keywordFilterHtml()}</div>
-    ${!data.experiences.length ? `<div class="empty-state"><h2>기억해 둘 경험을 적어보세요</h2><p>경험 이름과 역할, 키워드만 먼저 적고 자세한 내용은 나중에 이어서 써도 돼요.</p><div class="empty-actions"><button type="button" class="primary-button" data-action="new-experience">${icon('plus')}경험 추가</button></div></div>` : `<div class="table-scroll"><table class="data-table experience-table" aria-label="경험 정리"><thead><tr>${th('text', '경험', '', '22%')}${th('list', '유형', 'c-type', '10%')}${th('calendar', '기간', 'c-period', '12%')}${th('user', '내 역할', '', '15%')}${th('tag', '키워드', '', '18%')}${th('text', '간단 설명', 'c-desc', '15%')}${th('doc', '쓴 공고', '', '8%')}</tr></thead><tbody id="experience-results">${experienceResults()}</tbody></table></div>`}`;
+    ${!data.experiences.length ? `<div class="empty-state"><h2>기억해 둘 경험을 적어보세요</h2><p>위 주제 하나를 눌러 그 주제의 경험부터 적어 보세요. 이름과 역할만 먼저 적고 자세한 내용은 나중에 이어서 써도 돼요.</p><div class="empty-actions"><button type="button" class="primary-button" data-action="new-experience">${icon('plus')}경험 추가</button></div></div>` : `<div class="table-scroll"><table class="data-table experience-table" aria-label="경험 정리"><thead><tr>${th('text', '경험', '', '22%')}${th('list', '유형', 'c-type', '10%')}${th('calendar', '기간', 'c-period', '12%')}${th('user', '내 역할', '', '15%')}${th('tag', '키워드', '', '18%')}${th('text', '간단 설명', 'c-desc', '15%')}${th('doc', '쓴 공고', '', '8%')}</tr></thead><tbody id="experience-results">${experienceResults()}</tbody></table></div>`}`;
   $('#experience-search')?.addEventListener('input', event => { experienceSearch = event.target.value; refreshExperienceTable(); });
 }
 
 export function keywordEditorHtml(item) {
-  return `${(item.keywords || []).map(keyword => `<span class="keyword-tag"><button type="button" class="keyword-text" data-action="filter-keyword" data-keyword="${escapeHtml(keyword)}" title="이 키워드로 경험 보기">${escapeHtml(keyword)}</button><button type="button" class="chip-remove" data-action="remove-keyword" data-keyword="${escapeHtml(keyword)}" aria-label="${escapeHtml(keyword)} 키워드 삭제">×</button></span>`).join('')}<input class="keyword-input" placeholder="${item.keywords?.length ? '추가' : '키워드 입력 후 Enter'}" aria-label="키워드 추가" autocomplete="off">`;
+  const suggestions = experienceTopics.filter(topic => !(item.keywords || []).includes(topic));
+  const suggestHtml = suggestions.length ? `<div class="keyword-suggest">${suggestions.map(topic => `<button type="button" class="topic-chip topic-empty" data-action="add-keyword" data-keyword="${escapeHtml(topic)}">${icon('plus')}${escapeHtml(topic)}</button>`).join('')}</div>` : '';
+  return `${(item.keywords || []).map(keyword => `<span class="keyword-tag"><button type="button" class="keyword-text" data-action="filter-keyword" data-keyword="${escapeHtml(keyword)}" title="이 키워드로 경험 보기">${escapeHtml(keyword)}</button><button type="button" class="chip-remove" data-action="remove-keyword" data-keyword="${escapeHtml(keyword)}" aria-label="${escapeHtml(keyword)} 키워드 삭제">×</button></span>`).join('')}<input class="keyword-input" placeholder="${item.keywords?.length ? '추가' : '키워드 입력 후 Enter'}" aria-label="키워드 추가" autocomplete="off">${suggestHtml}`;
 }
 
 export function renderExperienceDetail() {
@@ -84,7 +96,7 @@ export function renderExperienceDetail() {
       </div>
       <section class="doc-section"><div class="section-head"><h2>자세한 내용</h2></div>
         <div id="markdown-editor" class="rich-editor" contenteditable="true" role="textbox" aria-label="경험 상세 작성" aria-multiline="true" data-placeholder="상황, 내가 한 일, 결과를 자유롭게 적어보세요.">${markdownToHtml(item.detail || '')}</div>
-        <div class="editor-foot"><span># 제목 · ## 소제목 · - 목록 · ⌘B 굵게</span></div></section>
+        <div class="editor-foot"><span># 제목 · ## 소제목 · - 목록 · ⌘B 굵게</span>${item.detail?.trim() ? '' : '<button type="button" class="text-button star-button" data-action="insert-star" title="상황 · 과제 · 행동 · 결과 제목을 넣어요. 고치거나 지워도 돼요.">STAR 틀 넣기</button>'}</div></section>
     </article>`;
   wireProperties(item);
   wireKeywordEditor(item);
@@ -113,7 +125,7 @@ function markdownInline(value) {
   return escapeHtml(value).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>');
 }
 
-function markdownToHtml(markdown) {
+export function markdownToHtml(markdown) {
   const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
   let output = '';
   let inList = false;
@@ -130,6 +142,8 @@ function markdownToHtml(markdown) {
     else output += `<p>${markdownInline(line)}</p>`;
   }
   if (inList) output += '</ul>';
+  // 내용이 아직 없는 소제목(STAR 틀의 '과제' 등) 아래에도 바로 쓸 수 있게 빈 줄을 둔다.
+  output = output.replace(/(<\/h[23]>)(?=<h[23]>|$)/g, '$1<p><br></p>');
   return output || '<p><br></p>';
 }
 
@@ -193,4 +207,15 @@ function wireEditor() {
   editor.addEventListener('keydown', event => shortcut(editor, event));
   editor.addEventListener('input', scheduleSave);
   editor.addEventListener('blur', saveCurrentEditor);
+}
+
+// STAR 틀: 상황 · 과제 · 행동 · 결과 소제목을 넣고 첫 칸에 커서를 둔다. 고정 칸이 아니라 그냥 글이다.
+export function insertStar() {
+  const editor = $('#markdown-editor'); if (!editor) return;
+  editor.innerHTML = ['상황', '과제', '행동', '결과'].map(title => `<h3>${title}</h3><p><br></p>`).join('');
+  main.querySelector('.star-button')?.remove();
+  const first = editor.querySelector('p'); editor.focus();
+  const range = document.createRange(); range.selectNodeContents(first); range.collapse(true);
+  const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  saveCurrentEditor();
 }
