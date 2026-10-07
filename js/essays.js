@@ -6,8 +6,10 @@ import { essayGroups, experiencePlainText, statusColor, statusTag } from './mode
 import { markdownToHtml } from './experiences.js';
 import { renderQuestions, wireQuestions } from './posting-detail.js';
 import { navTo, routeHash } from './router.js';
+import { persist } from './store.js';
+import { reducedMotion, showToast } from './ui.js';
 import { data, selectedId, setRoute, view } from './state.js';
-import { escapeHtml as esc, formatDate, icon, todayKey } from './util.js';
+import { copyText, escapeHtml as esc, formatDate, icon, todayKey } from './util.js';
 
 let lastPicked = ''; // 다른 탭에 다녀와도 보던 기업으로 돌아온다.
 
@@ -138,3 +140,79 @@ main.addEventListener('click', event => {
     if (experience) insertIntoAnswer(question.querySelector('.question-answer'), experiencePlainText(experience));
   }
 });
+
+// ---------- 답변 복사 ----------
+// 지원 사이트 입력칸에 바로 붙여 넣게 답변을 복사한다. 잠깐 체크 표시로 알려 준다.
+main.addEventListener('click', async event => {
+  if (view !== 'essays') return;
+  const button = event.target.closest('[data-copy-answer]'); if (!button) return;
+  const answer = button.closest('.question').querySelector('.question-answer').value;
+  if (!answer.trim()) { showToast('아직 쓴 답변이 없어요.'); return; }
+  if (!(await copyText(answer))) { showToast('복사하지 못했어요. 답변을 선택해 직접 복사해 주세요.'); return; }
+  button.classList.add('copied'); button.querySelector('span').textContent = '복사됨';
+  clearTimeout(button.copyTimer);
+  button.copyTimer = setTimeout(() => { button.classList.remove('copied'); button.querySelector('span').textContent = '복사'; }, 1400);
+});
+
+// ---------- 문항 순서 바꾸기 ----------
+// 문항 번호를 잡고 끌면 순서를 바꾼다. 번호에서 시작할 때만 끌 수 있게 해서, 답변 글을 고르는 동작과 겹치지 않게 한다.
+const listOf = () => main.querySelector('.essay-editor .question-list');
+const clearDrop = () => main.querySelectorAll('.question.drop-before, .question.drop-after').forEach(element => element.classList.remove('drop-before', 'drop-after'));
+let dragged = null;
+
+// 끌고 있는 위치 바로 아래(또는 맨 끝)의 문항: 그 문항 앞에 놓는다.
+function dropSpot(clientY) {
+  const others = [...listOf().querySelectorAll(':scope > .question')].filter(element => element !== dragged);
+  const before = others.find(element => { const rect = element.getBoundingClientRect(); return clientY < rect.top + rect.height / 2; });
+  return { before, last: others.at(-1) };
+}
+
+main.addEventListener('pointerdown', event => {
+  const handle = view === 'essays' && event.target.closest('.essay-editor [data-drag-handle]');
+  if (handle) handle.closest('.question').draggable = true;
+});
+
+main.addEventListener('dragstart', event => {
+  const section = view === 'essays' && event.target.closest?.('.essay-editor .question[draggable="true"]'); if (!section) return;
+  dragged = section;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('application/x-question', section.dataset.qid);
+  requestAnimationFrame(() => section.classList.add('dragging'));
+});
+
+main.addEventListener('dragover', event => {
+  if (!dragged || !event.target.closest?.('.essay-editor .question-list')) return;
+  event.preventDefault(); event.dataTransfer.dropEffect = 'move';
+  const { before, last } = dropSpot(event.clientY);
+  clearDrop();
+  if (before) before.classList.add('drop-before'); else last?.classList.add('drop-after');
+});
+
+main.addEventListener('drop', event => {
+  if (!dragged || !event.target.closest?.('.essay-editor .question-list')) return;
+  event.preventDefault();
+  const item = data.postings.find(posting => posting.id === selectedId); if (!item) return;
+  const { before } = dropSpot(event.clientY);
+  const moving = item.questions.find(question => question.id === dragged.dataset.qid);
+  const order = item.questions.filter(question => question !== moving);
+  const at = before ? order.findIndex(question => question.id === before.dataset.qid) : order.length;
+  order.splice(at, 0, moving);
+  if (order.every((question, index) => question === item.questions[index])) return;
+  // 옮기기 전 자리를 기억해 두었다가 새 자리로 미끄러지게 한다.
+  const rects = new Map([...listOf().querySelectorAll('.question')].map(element => [element.dataset.qid, element.getBoundingClientRect().top]));
+  item.questions = order; item.updatedAt = new Date().toISOString(); persist();
+  renderQuestions(item, 'questions');
+  if (reducedMotion()) return;
+  for (const element of listOf().querySelectorAll('.question')) {
+    const dy = (rects.get(element.dataset.qid) ?? 0) - element.getBoundingClientRect().top;
+    if (dy) element.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+  }
+});
+
+main.addEventListener('dragend', () => {
+  if (!dragged) return;
+  dragged.classList.remove('dragging'); dragged.draggable = false; dragged = null; clearDrop();
+});
+
+// 끌지 않고 번호만 눌렀다 떼면 다시 글을 고를 수 있게 되돌린다.
+main.addEventListener('pointerup', () => { if (!dragged) main.querySelectorAll('.essay-editor .question[draggable="true"]').forEach(element => { element.draggable = false; }); });

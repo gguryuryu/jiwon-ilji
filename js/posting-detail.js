@@ -159,13 +159,13 @@ function questionHtml(question, index, list) {
   const linked = question.experienceIds.map(id => data.experiences.find(experience => experience.id === id)).filter(Boolean);
   const available = data.experiences.filter(experience => !question.experienceIds.includes(experience.id));
   return `<section class="question${interview ? ' interview-question' : ''}" data-qid="${qid}">
-    <div class="question-head"><span class="question-index">${interview ? 'Q' : index + 1}</span>
+    <div class="question-head">${interview ? '<span class="question-index">Q</span>' : `<span class="question-index" data-drag-handle title="끌어서 순서 바꾸기">${index + 1}</span>`}
       <textarea class="question-title" rows="1" placeholder="${interview ? '예상 질문 (예: 우리 회사에 지원한 이유는?)' : '문항을 적어 주세요 (예: 지원 동기와 입사 후 포부)'}" aria-label="${name}">${escapeHtml(question.title)}</textarea>
       <button type="button" class="icon-button question-delete" data-action="delete-question" data-qid="${qid}" aria-label="${name} 삭제">×</button></div>
     <textarea class="question-answer" rows="${interview ? 3 : 5}" placeholder="${interview ? '답변을 말하듯이 적어 보세요' : '답변을 작성하세요'}" aria-label="${name} 답변">${escapeHtml(question.answer)}</textarea>
     <div class="question-foot">
       <div class="linked-experiences">${linked.map(experience => `<span class="experience-chip"><button type="button" data-action="open-experience" data-id="${escapeHtml(experience.id)}">${escapeHtml(experience.name)}</button><button type="button" class="chip-remove" data-action="unlink-experience" data-qid="${qid}" data-id="${escapeHtml(experience.id)}" aria-label="${escapeHtml(experience.name)} 연결 해제">×</button></span>`).join('')}${available.length ? `<select class="experience-picker" data-qid="${qid}" aria-label="${name}에 경험 연결"><option value="">+ 경험 연결</option>${available.map(experience => `<option value="${escapeHtml(experience.id)}">${escapeHtml(experience.name)}</option>`).join('')}</select>` : ''}</div>
-      <div class="question-count"><div class="char-count">${countHtml(question, list)}</div>${interview ? '' : `<label class="question-limit">제한 <input type="number" min="0" step="50" inputmode="numeric" value="${escapeHtml(question.limit ?? '')}" placeholder="—" aria-label="${name} 글자 수 제한">자</label>`}</div>
+      <div class="question-count"><div class="char-count">${countHtml(question, list)}</div>${interview ? '' : `<label class="question-limit">제한 <input type="number" min="0" step="50" inputmode="numeric" value="${escapeHtml(question.limit ?? '')}" placeholder="—" aria-label="${name} 글자 수 제한">자</label><button type="button" class="answer-copy" data-copy-answer aria-label="${name} 답변 복사" title="답변 복사">${icon('copy')}${icon('check')}<span>복사</span></button>`}</div>
     </div>
   </section>`;
 }

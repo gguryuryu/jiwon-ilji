@@ -118,3 +118,14 @@ export function parseTime(value) {
   if (am && hour === 12) hour = 0;
   return hour < 24 && minute < 60 ? `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}` : null;
 }
+
+// 복사: 맥 앱(WKWebView)에서 clipboard API가 막히면 예전 방식으로 복사한다.
+export async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* 아래 방식으로 */ }
+  const area = Object.assign(document.createElement('textarea'), { value: text });
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.append(area); area.select();
+  let copied = false; try { copied = document.execCommand('copy'); } catch { /* 복사 실패 */ }
+  area.remove();
+  return copied;
+}

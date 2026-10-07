@@ -5,7 +5,7 @@ import { EDU_KINDS, EDU_LIMIT, PROFILE_GROUPS, addEdu, certDate, eduOf, newProfi
 import { data, view } from './state.js';
 import { persist, scheduleSave } from './store.js';
 import { showToast } from './ui.js';
-import { autoGrow, escapeHtml as esc, icon } from './util.js';
+import { autoGrow, copyText, escapeHtml as esc, icon } from './util.js';
 
 const touch = item => { item.updatedAt = new Date().toISOString(); };
 
@@ -56,17 +56,6 @@ export function renderProfile(focus = '') {
     ${certsHtml()}${eduHtml('school')}${eduHtml('job')}`;
   main.querySelectorAll('.pf-cell textarea').forEach(autoGrow);
   if (focus) main.querySelector(focus)?.focus();
-}
-
-// 복사: 맥 앱(WKWebView)에서 clipboard API가 막히면 예전 방식으로 복사한다.
-async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); return true; } catch { /* 아래 방식으로 */ }
-  const area = Object.assign(document.createElement('textarea'), { value: text });
-  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
-  document.body.append(area); area.select();
-  let copied = false; try { copied = document.execCommand('copy'); } catch { /* 복사 실패 */ }
-  area.remove();
-  return copied;
 }
 
 function undoToast(message, restore) {

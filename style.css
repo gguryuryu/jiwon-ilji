@@ -7318,3 +7318,84 @@ main.essays-page {
     animation: none;
   }
 }
+
+/* ---------- 자소서 탭: 답변 복사 · 문항 순서 바꾸기 ---------- */
+.answer-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background-color .12s, border-color .12s, color .12s;
+}
+
+.answer-copy:hover {
+  border-color: var(--border-strong);
+  background: var(--hover);
+  color: var(--text);
+}
+
+.answer-copy .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.answer-copy .icon + .icon,
+.answer-copy.copied .icon:first-child {
+  display: none;
+}
+
+.answer-copy.copied .icon + .icon {
+  display: block;
+}
+
+.answer-copy.copied {
+  border-color: rgba(79, 176, 124, .45);
+  color: var(--c-green);
+}
+
+/* 번호를 잡고 끌어서 순서를 바꾼다 */
+.essay-editor [data-drag-handle] {
+  cursor: grab;
+  transition: background-color .12s, color .12s;
+}
+
+.essay-editor [data-drag-handle]:hover {
+  background: var(--active);
+  color: var(--text);
+}
+
+.essay-editor .question.dragging {
+  opacity: .45;
+}
+
+.essay-editor .question {
+  position: relative;
+}
+
+.essay-editor .question.drop-before::before,
+.essay-editor .question.drop-after::after {
+  position: absolute;
+  right: 8px;
+  left: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  content: "";
+  pointer-events: none;
+}
+
+.essay-editor .question.drop-before::before {
+  top: -9px;
+}
+
+.essay-editor .question.drop-after::after {
+  bottom: -9px;
+}
