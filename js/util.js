@@ -74,6 +74,13 @@ export const dateKey = date => `${date.getFullYear()}-${String(date.getMonth() +
 
 export const todayKey = () => dateKey(new Date());
 
+// 남은 날: 오늘이면 '오늘', 앞으로면 'D-n', 지났거나 날짜가 없으면 ''. 사흘 안이면 soon.
+export const dDay = date => {
+  if (!dateValue(date)) return { text: '', soon: false };
+  const days = Math.round((new Date(`${date}T00:00`) - new Date(`${todayKey()}T00:00`)) / 86_400_000);
+  return { text: days === 0 ? '오늘' : days > 0 ? `D-${days}` : '', soon: days >= 0 && days <= 3 };
+};
+
 export const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];
 
 // '9월 17일 (수)' — 올해가 아니면 연도를 붙인다.

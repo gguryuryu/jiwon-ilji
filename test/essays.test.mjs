@@ -24,3 +24,10 @@ test('경험 정리: 주제별 경험 수, 주제 키워드만 있는 경험은 
   assert.equal(experiencePlainText({ detail }), '동아리에서 역할이 겹쳤다.\n\n- 표로 정리\n- 점검 회의');
   assert.equal(experiencePlainText({ detail: '## 상황', description: '요약', result: '배포' }), '요약\n배포');
 });
+
+test('D-day: 오늘·앞으로는 남은 날(사흘 안이면 강조), 지났거나 날짜가 없으면 비움', async () => {
+  const { dDay, dateKey } = await import('../js/util.js');
+  const after = days => { const date = new Date(); date.setDate(date.getDate() + days); return dateKey(date); };
+  assert.deepEqual([0, 3, 4, -1].map(days => dDay(after(days))), [{ text: '오늘', soon: true }, { text: 'D-3', soon: true }, { text: 'D-4', soon: false }, { text: '', soon: false }]);
+  assert.equal(dDay('').text, '');
+});

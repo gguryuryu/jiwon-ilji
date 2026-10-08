@@ -6,16 +6,18 @@ import { goalStripHtml } from './goals.js';
 import { data, selectedId, view } from './state.js';
 import { persist } from './store.js';
 import { reducedMotion } from './ui.js';
-import { escapeHtml, formatDate, icon, optionsHtml, th, todayKey, uid, validUrl } from './util.js';
+import { dDay, escapeHtml, formatDate, icon, optionsHtml, th, todayKey, uid, validUrl } from './util.js';
 
 // 일정 칸: 날짜 + 종류 배지. 상태와 같은 말(예: '2차 면접 예정' + '2차 면접')은 되풀이하지 않고 '일정'으로 줄인다.
 // 지난 날짜는 흐리게 하고, 배지에 '마감됨'·'… 지남'을 붙여 앞으로의 일정과 헷갈리지 않게 한다.
+// 앞으로의 일정은 맨 앞 고정 칸에 D-day를 붙인다(사흘 안이면 강조). 끝난 공고·지난 일정은 칸만 비워 날짜 줄을 맞춘다.
 function scheduleHtml(item, schedule) {
   if (!schedule) return '';
   const deadline = schedule.label === '접수 마감';
   const past = schedule.date < todayKey();
   const kind = deadline ? (past ? '마감됨' : '마감') : `${item.status.includes(schedule.label) ? '일정' : schedule.label}${past ? ' 지남' : ''}`;
-  return `<span class="schedule${past ? ' past' : ''}"><span class="date-main">${escapeHtml(formatDate(schedule.date))}${schedule.time ? ` ${escapeHtml(schedule.time)}` : ''}</span><span class="date-kind${deadline ? '' : ' next'}">${escapeHtml(kind)}</span></span>`;
+  const left = groupFor(item) === 'done' ? { text: '' } : dDay(schedule.date);
+  return `<span class="schedule${past ? ' past' : ''}"><span class="date-dday${left.soon ? ' soon' : ''}">${left.text}</span><span class="date-main">${escapeHtml(formatDate(schedule.date))}${schedule.time ? ` ${escapeHtml(schedule.time)}` : ''}</span><span class="date-kind${deadline ? '' : ' next'}">${escapeHtml(kind)}</span></span>`;
 }
 
 export let search = '';

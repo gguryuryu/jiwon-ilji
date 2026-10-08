@@ -9,21 +9,15 @@ import { navTo, routeHash } from './router.js';
 import { persist } from './store.js';
 import { reducedMotion, showToast } from './ui.js';
 import { data, selectedId, setRoute, view } from './state.js';
-import { copyText, escapeHtml as esc, formatDate, icon, todayKey } from './util.js';
+import { copyText, dDay, escapeHtml as esc, formatDate, icon } from './util.js';
 
 let lastPicked = ''; // 다른 탭에 다녀와도 보던 기업으로 돌아온다.
-
-function dDay(deadline) {
-  if (!deadline) return '';
-  const days = Math.round((new Date(`${deadline}T00:00`) - new Date(`${todayKey()}T00:00`)) / 86_400_000);
-  return days === 0 ? '오늘' : days > 0 ? `D-${days}` : '';
-}
 
 // 마감 칸: 쓸 곳은 D-day(사흘 안이면 강조), 나머지는 날짜
 function deadlineCell(item, group) {
   if (!item.deadline) return '<span class="placeholder">—</span>';
-  const left = group === 'writing' ? dDay(item.deadline) : '';
-  if (left) return `<span class="essay-dday${/^(오늘|D-[1-3]$)/.test(left) ? ' soon' : ''}" title="${esc(formatDate(item.deadline))} 마감">${left}</span>`;
+  const left = group === 'writing' ? dDay(item.deadline) : { text: '' };
+  if (left.text) return `<span class="essay-dday${left.soon ? ' soon' : ''}" title="${esc(formatDate(item.deadline))} 마감">${left.text}</span>`;
   const [, month, day] = item.deadline.split('-').map(Number);
   return `<span title="${esc(formatDate(item.deadline))}">${month}.${day}</span>`;
 }

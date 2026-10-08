@@ -3217,6 +3217,27 @@ button.brand:hover {
   white-space: nowrap;
 }
 
+.date-dday {
+  min-width: 2.6em;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-dday.soon {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+/* 카드는 줄을 맞출 이웃이 없어 고정 폭을 풀고, 빈 칸은 숨긴다. */
+.card-meta .date-dday {
+  min-width: 0;
+}
+
+.card-meta .date-dday:empty {
+  display: none;
+}
+
 .schedule.past .date-main {
   color: var(--text-3);
 }
