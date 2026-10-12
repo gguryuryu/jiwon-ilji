@@ -2795,6 +2795,40 @@ button.brand:hover {
   min-width: 0;
 }
 
+/* 다음 일정 이름 칸을 누르면 펼쳐지는 목록(label-pick.js) */
+.label-pick-host {
+  position: relative;
+}
+
+.label-pick {
+  position: absolute;
+  z-index: 40;
+  display: grid;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--elevated);
+  box-shadow: 0 12px 32px rgb(0 0 0 / calc(.45 * var(--shade)));
+}
+
+.label-pick-item {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.label-pick-item:hover,
+.label-pick-item.active {
+  background: var(--hover);
+  color: var(--text);
+}
+
 /* ---------- 좁은 화면: 덜 중요한 열부터 숨긴다 ---------- */
 
 /* ---------- 작은 달력 ---------- */

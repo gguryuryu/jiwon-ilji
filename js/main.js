@@ -16,6 +16,7 @@ import { persist, refreshFromServer, saveCurrentEditor, startFromServer } from '
 import { animateReorder, flushPending, reducedMotion, setSaveState, showToast, syncTabIndicators } from './ui.js';
 import { autoGrow, dateKey, escapeHtml, formatDateLong, icon, todayKey, uid } from './util.js';
 import { setupUpdateButton } from './update.js';
+import './label-pick.js';
 import { alioState, openAlioDialog, syncAlio } from './alio.js';
 
 const sidebarToggle = $('#sidebar-toggle');

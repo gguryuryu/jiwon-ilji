@@ -152,6 +152,7 @@
 
 공고를 열면 아래에 **면접 준비 · 면접 후기** 탭이 있습니다. 표의 자소서 칸이나 상세의 **자소서 ›** 를 누르면 그 기업의 자소서를 [자소서 탭](#자소서)에서 씁니다.
 
+- **다음 일정**: 날짜를 고르고, 이름 칸을 누르면 서류 발표 · 필기 · 인적성 · 1차 면접 · 2차 면접 · 최종 발표 목록이 펼쳐집니다. 치면 맞는 것만 남고, 목록에 없는 이름도 그대로 쓰면 됩니다(새 공고 창도 같습니다).
 - **면접 준비**: 예상 질문과 답을 적으면 말하는 데 걸리는 시간이 보입니다. 자주 나오는 질문을 버튼 하나로 추가합니다.
 - **면접 후기**: 받은 질문·분위기·아쉬운 점을 남기고, 받은 질문은 면접 준비로 옮깁니다.
 
@@ -269,7 +270,7 @@ js/state.js         데이터와 현재 화면(다른 파일은 setData, setRout
 js/store.js         저장·재시도·다른 창과 맞추기, merge.js는 충돌 때 변경 합치기
 js/router.js        주소(#/…)와 화면 이동, 뒤로 가기
 js/goals.js         지원 현황 위의 목표 · 해 온 것 보드, 목표 창, 자격 창
-js/postings.js      지원 현황(표·보드·단계 요약), posting-detail.js 상세, interview.js 면접 후기, peek.js 사이드 피크, date-field.js 날짜 칸
+js/postings.js      지원 현황(표·보드·단계 요약), posting-detail.js 상세, interview.js 면접 후기, peek.js 사이드 피크, date-field.js 날짜 칸, label-pick.js 다음 일정 이름 목록
 js/lab.js           집중 루프(while·if 블록), 계산은 lab-model.js
 js/study.js         공부 기록(잔디·루틴·교재 진도), 계산은 study-model.js
 js/essays.js        자소서 탭(왼쪽 기업 목록 + 오른쪽 작성. 문항 편집은 posting-detail.js와 같이 씀), files.js 기업별 자료 파일, essay-pdf.js 공유(PDF)
