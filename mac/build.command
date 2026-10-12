@@ -10,7 +10,7 @@ trap 'rm -rf "$work"' EXIT
 
 echo '앱을 컴파일하는 중(애플 실리콘 · 인텔)…'
 for arch in arm64 x86_64; do
-  swiftc -O -swift-version 5 -target "$arch-apple-macos13.0" -o "$work/jiwon-ilji-$arch" main.swift -framework AppKit -framework WebKit
+  swiftc -O -swift-version 5 -target "$arch-apple-macos13.0" -o "$work/jiwon-ilji-$arch" main.swift -framework AppKit -framework WebKit -framework PDFKit
 done
 lipo -create -output "$work/jiwon-ilji" "$work/jiwon-ilji-arm64" "$work/jiwon-ilji-x86_64"
 

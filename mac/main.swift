@@ -1,6 +1,7 @@
 // 지원일지 맥 앱: 앱 폴더의 서버(server.mjs)를 켜고, 브라우저 대신 앱 창(WKWebView)으로 보여 준다.
 // 창을 닫거나 ⌘Q로 끝내면 작성 중인 내용을 저장한 뒤 서버도 끈다. 빌드는 mac/build.command.
 import AppKit
+import PDFKit
 import WebKit
 
 // 앱 폴더 찾기: 앱이 놓인 폴더(저장소 맨 위) → 지난번에 쓴 폴더 → 직접 고르기 순서.
@@ -255,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
       webView.evaluateJavaScript("window.jiwonLab && jiwonLab.act(\(json(action)), \(json(id)))")
     case "focusMain": NSApp.activate(ignoringOtherApps: true); window.makeKeyAndOrderFront(nil)
     case "size": if let height = body["height"] as? Double { resizeMini(CGFloat(height)) }
+    case "pdf": makePDF(body)
     default: break
     }
   }
@@ -352,13 +354,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
 
   // 백업 파일은 '다운로드' 폴더에 저장하고, 다 되면 Finder에서 보여 준다.
   func download(_ download: WKDownload, decideDestinationUsing response: URLResponse, suggestedFilename: String, completionHandler: @escaping (URL?) -> Void) {
-    let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
-    var target = folder.appendingPathComponent(suggestedFilename)
-    let name = (suggestedFilename as NSString).deletingPathExtension; let ext = (suggestedFilename as NSString).pathExtension
-    var count = 2
-    while FileManager.default.fileExists(atPath: target.path) { target = folder.appendingPathComponent("\(name) (\(count))" + (ext.isEmpty ? "" : ".\(ext)")); count += 1 }
+    let target = downloadTarget(suggestedFilename)
     downloads[ObjectIdentifier(download)] = target
     completionHandler(target)
+  }
+
+  // 같은 이름이 있으면 '이름 (2).pdf'처럼 번호를 붙인다.
+  func downloadTarget(_ filename: String) -> URL {
+    let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+    var target = folder.appendingPathComponent(filename)
+    let name = (filename as NSString).deletingPathExtension; let ext = (filename as NSString).pathExtension
+    var count = 2
+    while FileManager.default.fileExists(atPath: target.path) { target = folder.appendingPathComponent("\(name) (\(count))" + (ext.isEmpty ? "" : ".\(ext)")); count += 1 }
+    return target
   }
 
   // 저장이 끝나면 Finder를 띄우지 않고 화면 안에 알린다.
@@ -370,6 +378,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
   func download(_ download: WKDownload, didFailWithError error: Error, resumeData: Data?) {
     downloads.removeValue(forKey: ObjectIdentifier(download))
     toast("파일을 저장하지 못했어요: \(error.localizedDescription)")
+  }
+
+  // MARK: 자소서 PDF(자소서 탭의 '공유')
+  // 화면이 인쇄용 시트(#print-sheet)를 붙여 두면 그 화면을 A4 PDF로 다운로드 폴더에 뽑는다. '공유하기'면 공유 메뉴도 버튼 아래에 띄운다.
+
+  var pdfJob: (url: URL, share: Bool, anchor: NSRect)?
+
+  func makePDF(_ body: [String: Any]) {
+    guard pdfJob == nil, let name = body["name"] as? String else { return }
+    let zoom = webView.pageZoom
+    let number = { (key: String) in CGFloat((body[key] as? Double) ?? 0) * zoom }
+    var anchor = NSRect(x: number("x"), y: number("y"), width: number("width"), height: number("height"))
+    if !webView.isFlipped { anchor.origin.y = webView.bounds.height - anchor.maxY }
+    let target = downloadTarget(name)
+    let info = NSPrintInfo.shared.copy() as! NSPrintInfo
+    info.paperSize = NSSize(width: 595.28, height: 841.89) // A4
+    info.topMargin = 0; info.bottomMargin = 0; info.leftMargin = 0; info.rightMargin = 0 // 여백은 화면의 @page가 정한다
+    info.horizontalPagination = .automatic; info.verticalPagination = .automatic
+    info.isHorizontallyCentered = false; info.isVerticallyCentered = false
+    info.jobDisposition = .save
+    info.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = target
+    let operation = webView.printOperation(with: info)
+    operation.showsPrintPanel = false; operation.showsProgressPanel = false
+    operation.jobTitle = (name as NSString).deletingPathExtension
+    operation.view?.frame = webView.bounds // 이게 없으면 빈 쪽이 나온다
+    pdfJob = (target, body["share"] as? Bool ?? false, anchor)
+    operation.runModal(for: window, delegate: self, didRun: #selector(pdfDone(_:success:contextInfo:)), contextInfo: nil)
+  }
+
+  @objc func pdfDone(_ operation: NSPrintOperation, success: Bool, contextInfo: UnsafeMutableRawPointer?) {
+    webView.evaluateJavaScript("window.dispatchEvent(new Event('jiwon:printed'))")
+    guard let job = pdfJob else { return }
+    pdfJob = nil
+    guard success, FileManager.default.fileExists(atPath: job.url.path) else { toast("PDF를 만들지 못했어요."); return }
+    numberPages(job.url)
+    toast("다운로드 폴더에 저장했어요: \(job.url.lastPathComponent)")
+    guard job.share else { return }
+    NSSharingServicePicker(items: [job.url]).show(relativeTo: job.anchor, of: webView, preferredEdge: webView.isFlipped ? .maxY : .minY)
+  }
+
+  // WebKit 인쇄는 @page의 쪽 번호 칸을 그리지 않아서, 다 만든 PDF를 다시 그리며 아래 가운데에 '— 1 —'을 찍는다.
+  func numberPages(_ url: URL) {
+    guard let document = PDFDocument(url: url), document.pageCount > 0 else { return }
+    let output = NSMutableData()
+    var media = document.page(at: 0)!.bounds(for: .mediaBox)
+    guard let consumer = CGDataConsumer(data: output), let context = CGContext(consumer: consumer, mediaBox: &media, nil) else { return }
+    let style = NSMutableParagraphStyle(); style.alignment = .center
+    let attributes: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 8.5), .foregroundColor: NSColor(white: 0.6, alpha: 1), .paragraphStyle: style]
+    for index in 0..<document.pageCount {
+      guard let page = document.page(at: index) else { continue }
+      var box = page.bounds(for: .mediaBox)
+      context.beginPage(mediaBox: &box)
+      page.draw(with: .mediaBox, to: context)
+      NSGraphicsContext.saveGraphicsState()
+      NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+      ("— \(index + 1) —" as NSString).draw(in: NSRect(x: 0, y: 28, width: box.width, height: 14), withAttributes: attributes)
+      NSGraphicsContext.restoreGraphicsState()
+      context.endPage()
+    }
+    context.closePDF()
+    try? output.write(to: url)
   }
 
   func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {

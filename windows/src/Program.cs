@@ -198,7 +198,47 @@ namespace JiwonIlji
                 case "size":
                     if (mini != null && body.TryGetValue("height", out var height)) { try { mini.FitHeight(Convert.ToDouble(height)); } catch { /* 숫자가 아니면 무시 */ } }
                     break;
+                case "pdf":
+                    if (body.TryGetValue("name", out var name) && name is string fileName)
+                        _ = SavePdfAsync(fileName, body.TryGetValue("share", out var share) && share is bool reveal && reveal);
+                    break;
             }
+        }
+
+        // 자소서 PDF(자소서 탭의 '공유'): 화면이 붙여 둔 인쇄용 시트(#print-sheet)를 A4 PDF로 다운로드 폴더에 뽑는다.
+        // '저장하고 폴더 열기'면 탐색기에서 그 파일을 골라 보여 준다(카톡·메일로 보낼 때 끌어다 쓰기 쉽게).
+        bool printing;
+        async Task SavePdfAsync(string name, bool reveal)
+        {
+            var core = web.CoreWebView2;
+            if (printing || core == null || environment == null) return;
+            printing = true;
+            try
+            {
+                var path = DownloadTarget(core.Profile.DefaultDownloadFolderPath, name);
+                var settings = environment.CreatePrintSettings();
+                settings.ShouldPrintHeaderAndFooter = false;
+                settings.PageWidth = 8.27; settings.PageHeight = 11.69; // A4(인치). 여백은 화면의 @page를 따른다.
+                if (!await core.PrintToPdfAsync(path, settings)) { Toast("PDF를 만들지 못했어요."); return; }
+                Toast("다운로드 폴더에 저장했어요 · " + Path.GetFileName(path));
+                if (reveal) Process.Start("explorer.exe", "/select,\"" + path + "\"");
+            }
+            catch (Exception error) { Toast("PDF를 만들지 못했어요. " + error.Message); }
+            finally
+            {
+                printing = false;
+                _ = core.ExecuteScriptAsync("window.dispatchEvent(new Event('jiwon:printed'))");
+            }
+        }
+
+        // 같은 이름이 있으면 '이름 (2).pdf'처럼 번호를 붙인다.
+        static string DownloadTarget(string folder, string fileName)
+        {
+            foreach (var bad in Path.GetInvalidFileNameChars()) fileName = fileName.Replace(bad, ' ');
+            var path = Path.Combine(folder, fileName);
+            var stem = Path.GetFileNameWithoutExtension(fileName); var ext = Path.GetExtension(fileName);
+            for (var count = 2; File.Exists(path); count++) path = Path.Combine(folder, stem + " (" + count + ")" + ext);
+            return path;
         }
 
         void ShowMini()
